@@ -1,22 +1,32 @@
+import 'dart:io';
+
 import '../application/access/app_access_use_cases.dart';
 import '../application/backend/ai_recipe_backend_facade.dart';
 import '../application/backend/import_task_runner_factory.dart';
+import '../application/ocr/local_ocr_model_use_cases.dart';
 import '../application/recipe/recipe_library_use_cases.dart';
 import '../data/device_app_capability_runtime_repository.dart';
 import '../data/device_app_session_repository.dart';
 import '../data/device_import_task_runner_factory.dart';
 import '../data/llm_config_repository.dart';
+import '../data/ocr/device_ocr_model_package_service.dart';
 import '../data/local/app_database.dart';
 import '../data/sqlite_import_task_repository.dart';
 import '../data/sqlite_recipe_repository.dart';
 import '../domain/access/app_access_repository.dart';
+import '../domain/access/app_capability.dart';
 import '../domain/importing/import_content_adapter.dart';
 import '../domain/importing/import_task_repository.dart';
+import '../domain/ocr/ocr_model_manifest.dart';
+import '../domain/ocr/ocr_model_package.dart';
 import '../domain/recipe/recipe_repository.dart';
 import '../providers/importing/http_import_transport.dart';
 import '../providers/importing/import_http_transport.dart';
 import '../providers/importing/public_content_adapters.dart';
 import '../providers/llm/llm_provider_factory.dart';
+import '../providers/ocr/http_ocr_model_download_client.dart';
+import '../providers/ocr/platform_ocr_provider.dart';
+import '../providers/ocr/platform_ocr_runtime_bridge.dart';
 
 class AiRecipeBackendCompositionRoot {
   AiRecipeBackendCompositionRoot._({
@@ -39,6 +49,13 @@ class AiRecipeBackendCompositionRoot {
     ImportLlmProcessorBuilder? managedLlmBuilder,
     OcrProviderBuilder? localOcrBuilder,
     OcrProviderBuilder? cloudOcrBuilder,
+    OcrModelPackageService? localOcrModelPackageService,
+    OcrRuntimeBridge? localOcrRuntimeBridge,
+    OcrModelDownloadClient? ocrModelDownloadClient,
+    OcrRuntimePlatform? currentOcrPlatform,
+    Set<String> trustedOcrModelHosts = const <String>{},
+    String localOcrPackageId = 'paddleocr-ppocrv5-mobile-zh',
+    String appVersion = '1.0.0',
     AsrProviderBuilder? managedAsrBuilder,
     String Function()? idGenerator,
     DateTime Function()? clock,
@@ -71,10 +88,40 @@ class AiRecipeBackendCompositionRoot {
         sessionRepository ?? DeviceAppSessionRepository();
     final resolvedLlmConfigRepository =
         llmConfigRepository ?? DeviceLlmConfigRepository();
+    final resolvedLocalOcrRuntimeBridge =
+        localOcrRuntimeBridge ?? PlatformOcrRuntimeBridge();
+    final resolvedLocalOcrModelPackageService =
+        localOcrModelPackageService ??
+        DeviceOcrModelPackageService(
+          downloadClient:
+              ocrModelDownloadClient ?? HttpOcrModelDownloadClient(),
+          trustedHosts: trustedOcrModelHosts,
+          currentPlatform: currentOcrPlatform ?? _currentOcrRuntimePlatform(),
+          appVersion: appVersion,
+          healthCheck: resolvedLocalOcrRuntimeBridge.healthCheck,
+        );
+    final resolvedLocalOcrBuilder =
+        localOcrBuilder ??
+        () async => PlatformOcrProvider(
+          packageService: resolvedLocalOcrModelPackageService,
+          runtimeBridge: resolvedLocalOcrRuntimeBridge,
+          packageId: localOcrPackageId,
+        );
     final resolvedCapabilityRuntimeRepository =
         capabilityRuntimeRepository ??
         DeviceAppCapabilityRuntimeRepository(
           llmConfigRepository: resolvedLlmConfigRepository,
+          readinessLoaders: <AppCapability, CapabilityReadinessLoader>{
+            AppCapability.localOcr: () async {
+              final active = await resolvedLocalOcrModelPackageService
+                  .getActivePackage(localOcrPackageId);
+              if (active == null) return CapabilityReadiness.notInstalled;
+              final probe = await resolvedLocalOcrRuntimeBridge.probe();
+              return probe.runtimeAvailable && probe.recognitionSupported
+                  ? CapabilityReadiness.ready
+                  : CapabilityReadiness.unavailable;
+            },
+          },
         );
 
     final access = AppAccessUseCases(
@@ -106,7 +153,7 @@ class AiRecipeBackendCompositionRoot {
           idGenerator: resolvedIdGenerator,
           clock: resolvedClock,
           managedLlmBuilder: managedLlmBuilder,
-          localOcrBuilder: localOcrBuilder,
+          localOcrBuilder: resolvedLocalOcrBuilder,
           cloudOcrBuilder: cloudOcrBuilder,
           managedAsrBuilder: managedAsrBuilder,
         );
@@ -118,6 +165,9 @@ class AiRecipeBackendCompositionRoot {
       runnerFactory: resolvedRunnerFactory,
       importTaskIdGenerator: resolvedIdGenerator,
       clock: resolvedClock,
+      localOcrModels: LocalOcrModelUseCases(
+        packageService: resolvedLocalOcrModelPackageService,
+      ),
     );
 
     return AiRecipeBackendCompositionRoot._(
@@ -134,6 +184,10 @@ class AiRecipeBackendCompositionRoot {
     if (_closed) return;
     _closed = true;
     await _database?.close();
+  }
+
+  static OcrRuntimePlatform _currentOcrRuntimePlatform() {
+    return Platform.isIOS ? OcrRuntimePlatform.ios : OcrRuntimePlatform.android;
   }
 
   static ImportContentAdapterRegistry _buildPublicAdapterRegistry(

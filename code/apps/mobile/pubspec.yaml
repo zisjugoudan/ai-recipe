@@ -1,4 +1,4 @@
-﻿name: ai_recipe
+name: ai_recipe
 description: "AI 食谱移动端：Local-first 菜谱管理与可插拔 AI 能力。"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -34,11 +34,13 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  crypto: ^3.0.7
   http: ^1.6.0
   flutter_secure_storage: ^10.3.1
   shared_preferences: ^2.5.5
   sqflite: ^2.4.2+1
   path: ^1.9.1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

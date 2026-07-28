@@ -1,5 +1,6 @@
 import 'package:ai_recipe/app/ai_recipe_backend_composition_root.dart';
 import 'package:ai_recipe/application/access/app_access_use_cases.dart';
+import 'package:ai_recipe/application/backend/ai_recipe_backend_facade.dart';
 import 'package:ai_recipe/application/backend/import_execution_plan.dart';
 import 'package:ai_recipe/application/recipe/recipe_library_commands.dart';
 import 'package:ai_recipe/data/llm_config_repository.dart';
@@ -14,6 +15,9 @@ import 'package:ai_recipe/domain/llm/llm_connection_config.dart';
 import 'package:ai_recipe/domain/llm/llm_models.dart';
 import 'package:ai_recipe/domain/llm/llm_provider.dart';
 import 'package:ai_recipe/domain/llm/llm_provider_type.dart';
+import 'package:ai_recipe/domain/ocr/ocr_model_manifest.dart';
+import 'package:ai_recipe/domain/ocr/ocr_model_package.dart';
+import 'package:ai_recipe/domain/ocr/ocr_model_package_exception.dart';
 import 'package:ai_recipe/domain/ocr/ocr_provider.dart';
 import 'package:ai_recipe/domain/recipe/recipe.dart';
 import 'package:ai_recipe/providers/llm/llm_provider_factory.dart';
@@ -230,6 +234,88 @@ void main() {
     },
   );
 
+  group('local OCR model management facade', () {
+    test('returns model status through the injected service', () async {
+      final packageService = FakeOcrModelPackageService(
+        status: OcrModelPackageStatus(
+          packageId: 'paddleocr-ppocrv5-mobile-zh',
+          state: OcrModelInstallState.installed,
+          progress: 1,
+          installedVersion: '1.0.0',
+        ),
+      );
+      final harness = BackendHarness(
+        now: now,
+        authenticated: false,
+        localOcrModelPackageService: packageService,
+      );
+      addTearDown(harness.root.close);
+
+      final status = await harness.root.backend.getLocalOcrModelStatus(
+        'paddleocr-ppocrv5-mobile-zh',
+      );
+
+      expect(packageService.lastStatusPackageId, 'paddleocr-ppocrv5-mobile-zh');
+      expect(status.state, OcrModelInstallState.installed);
+      expect(status.installedVersion, '1.0.0');
+    });
+
+    test(
+      'maps incompatible platform errors to componentIncompatible',
+      () async {
+        final harness = BackendHarness(
+          now: now,
+          authenticated: false,
+          localOcrModelPackageService: FakeOcrModelPackageService(
+            getStatusError: const OcrModelPackageException(
+              kind: OcrModelPackageErrorKind.incompatiblePlatform,
+              message: 'Platform is not supported.',
+            ),
+          ),
+        );
+        addTearDown(harness.root.close);
+
+        await expectLater(
+          harness.root.backend.getLocalOcrModelStatus(
+            'paddleocr-ppocrv5-mobile-zh',
+          ),
+          throwsA(
+            isA<AiRecipeBackendException>().having(
+              (error) => error.code,
+              'code',
+              AiRecipeBackendErrorCode.componentIncompatible,
+            ),
+          ),
+        );
+      },
+    );
+
+    test('maps install failures to componentInstallationFailed', () async {
+      final harness = BackendHarness(
+        now: now,
+        authenticated: false,
+        localOcrModelPackageService: FakeOcrModelPackageService(
+          installError: const OcrModelPackageException(
+            kind: OcrModelPackageErrorKind.checksumMismatch,
+            message: 'Model checksum does not match.',
+          ),
+        ),
+      );
+      addTearDown(harness.root.close);
+
+      await expectLater(
+        harness.root.backend.installLocalOcrModel(sampleOcrModelManifest()),
+        throwsA(
+          isA<AiRecipeBackendException>().having(
+            (error) => error.code,
+            'code',
+            AiRecipeBackendErrorCode.componentInstallationFailed,
+          ),
+        ),
+      );
+    });
+  });
+
   test('OCR and ASR routes enrich content before recipe generation', () async {
     final ocrProvider = FakeOcrProvider((input, token) async {
       return sampleOcrDocument(text: '图片识别：番茄两个，鸡蛋三个');
@@ -305,6 +391,7 @@ class BackendHarness {
     CapabilityReadiness customLlmReadiness = CapabilityReadiness.ready,
     ImportContent Function(ImportSourceLink source)? xiaohongshuContentBuilder,
     Future<OcrProvider> Function()? localOcrBuilder,
+    OcrModelPackageService? localOcrModelPackageService,
     Future<AsrProvider> Function()? managedAsrBuilder,
   }) {
     recipeRepository = MemoryRecipeLibraryRepository();
@@ -327,6 +414,7 @@ class BackendHarness {
       provider: provider,
       xiaohongshuAdapter: xiaohongshuAdapter,
       localOcrBuilder: localOcrBuilder,
+      localOcrModelPackageService: localOcrModelPackageService,
       managedAsrBuilder: managedAsrBuilder,
     );
   }
@@ -346,6 +434,7 @@ class BackendHarness {
     required FakeLlmProvider provider,
     required FakeImportContentAdapter xiaohongshuAdapter,
     Future<OcrProvider> Function()? localOcrBuilder,
+    OcrModelPackageService? localOcrModelPackageService,
     Future<AsrProvider> Function()? managedAsrBuilder,
   }) {
     var id = 0;
@@ -384,6 +473,7 @@ class BackendHarness {
       ]),
       llmProviderFactory: FakeLlmProviderFactory(provider),
       localOcrBuilder: localOcrBuilder,
+      localOcrModelPackageService: localOcrModelPackageService,
       managedAsrBuilder: managedAsrBuilder,
       idGenerator: () => 'backend-${id += 1}',
       clock: () => now,
@@ -431,4 +521,83 @@ class FakeLlmProviderFactory extends LlmProviderFactory {
 
   @override
   LlmProvider create(LlmProviderType type) => provider;
+}
+
+OcrModelManifest sampleOcrModelManifest() {
+  return OcrModelManifest(
+    schemaVersion: 1,
+    packageId: 'paddleocr-ppocrv5-mobile-zh',
+    version: '1.0.0',
+    engine: 'onnxruntime',
+    platforms: const <OcrRuntimePlatform>{OcrRuntimePlatform.android},
+    languages: const <String>['zh-Hans', 'en'],
+    minAppVersion: '0.1.0',
+    license: 'Apache-2.0',
+    files: <OcrModelFile>[
+      OcrModelFile(
+        role: 'detector',
+        path: 'det.onnx',
+        downloadUrl: 'https://models.example.invalid/ocr/det.onnx',
+        sha256: '0' * 64,
+        sizeBytes: 1,
+      ),
+    ],
+  );
+}
+
+class FakeOcrModelPackageService implements OcrModelPackageService {
+  FakeOcrModelPackageService({
+    OcrModelPackageStatus? status,
+    this.activePackage,
+    this.getStatusError,
+    this.installError,
+  }) : status =
+           status ??
+           OcrModelPackageStatus(
+             packageId: 'paddleocr-ppocrv5-mobile-zh',
+             state: OcrModelInstallState.notInstalled,
+             progress: 0,
+           );
+
+  OcrModelPackageStatus status;
+  OcrInstalledModelPackage? activePackage;
+  Object? getStatusError;
+  Object? installError;
+  String? lastStatusPackageId;
+  OcrModelManifest? lastInstalledManifest;
+  String? deletedPackageId;
+  var recoverCount = 0;
+
+  @override
+  Future<OcrModelPackageStatus> getStatus(String packageId) async {
+    lastStatusPackageId = packageId;
+    if (getStatusError case final error?) throw error;
+    return status;
+  }
+
+  @override
+  Future<OcrInstalledModelPackage?> getActivePackage(String packageId) async {
+    return activePackage;
+  }
+
+  @override
+  Future<OcrModelPackageStatus> install(
+    OcrModelManifest manifest, {
+    void Function(OcrModelPackageStatus status)? onStatusChanged,
+  }) async {
+    lastInstalledManifest = manifest;
+    if (installError case final error?) throw error;
+    onStatusChanged?.call(status);
+    return status;
+  }
+
+  @override
+  Future<void> delete(String packageId) async {
+    deletedPackageId = packageId;
+  }
+
+  @override
+  Future<void> recoverInterruptedInstallations() async {
+    recoverCount += 1;
+  }
 }

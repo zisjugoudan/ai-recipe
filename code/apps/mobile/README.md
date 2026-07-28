@@ -23,8 +23,9 @@
 - IMPORT-003 公开内容 HTTP Transport、小红书/抖音公共元数据 Adapter、HTML/JSON-LD 解析和人工粘贴/本地媒体降级。
 - AI-002 受限 Prompt、严格结构化菜谱 Schema、草稿持久化、错误映射和保存提交点。
 - OCR-001 统一 OCR Provider、严格模型 Manifest、OCR 证据字段和导入预处理流水线。
+- SPK-002 阶段切片：本地 OCR 模型包下载/校验/安装/激活/删除/恢复，`ai_recipe/local_ocr` MethodChannel，Android ONNX Runtime Session 健康检查，以及 Application/Facade/组合根接线。
 - ASR-001 统一 ASR Provider、分段时间证据、音视频限制、部分结果和导入预处理流水线。
-- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 217 项测试通过。
+- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 237 项测试通过。
 
 ## 本地运行
 
@@ -47,11 +48,16 @@ flutter build apk --debug
 
 当前仓库路径包含中文。Android Gradle Plugin 的路径检查已通过 `android.overridePathCheck=true` 处理，但 Flutter shader compiler 在 Windows 上仍可能无法向含中文的输出路径写文件。
 
-本轮验证通过纯 ASCII Junction 指向本工程后成功构建。后续 Windows 开发建议将仓库放到纯 ASCII 绝对路径，或建立稳定的纯 ASCII Junction 构建入口；不要依赖验收时创建的临时 Junction 长期存在。
+本轮验证固定从 `C:\tmp\ai-recipe-mobile` 纯 ASCII Junction 构建并成功生成 APK。后续 Windows 开发必须继续使用该入口，或将仓库迁移到纯 ASCII 绝对路径；直接从当前中文路径构建可能触发 Flutter Shader Compiler 写入失败。
 
 Debug APK 已成功生成并在 Android 12 真机安装、启动。详细记录见仓库根目录：
 
 `tests/acceptance/SPK-001-llm-provider-baseline-2026-07-27.md`
+
+本地 OCR 阶段验收见：
+
+`tests/acceptance/SPK-002-local-ocr-runtime-slice-2026-07-28.md`
+
 ## 安全约束
 
 - 不得将真实 API Key、Token、Authorization Header、Prompt 或完整模型响应提交到 Git 或写入日志。
@@ -64,8 +70,8 @@ Debug APK 已成功生成并在 Android 12 真机安装、启动。详细记录�
 
 - Windows 环境不能完成 iOS 构建、Keychain、本地网络权限和 iPhone 真机验证。
 - iOS 仅加入本地网络用途说明和 `NSAllowsLocalNetworking`；任意局域网 IP 的明文 HTTP 行为仍需在 macOS/iPhone 上实测，不能视为已通过。
-- 尚未验证系统分享、后台任务、本地通知、OCR 原生桥接和真实 LLM 服务兼容性。
+- 尚未验证系统分享、后台任务、本地通知和真实 LLM 服务兼容性。OCR 原生桥接目前只完成 Android Runtime 探测和 Session 健康检查。
 - 设置页当前保存一个活动配置；多配置管理和模型列表读取属于后续任务。
-- 已支持从已有文本、OCR 或 ASR 结果生成结构化菜谱草稿；OCR/ASR 纯 Dart 契约与预处理已完成，Android/iOS ONNX Runtime 原生桥接、模型下载、真实 OCR/ASR Provider 和真实 LLM 服务兼容性尚待验证。
+- 已支持从已有文本、OCR 或 ASR 结果生成结构化菜谱草稿；本地 OCR 模型包管理和 Android ONNX Runtime Session 健康检查已完成，但 Android `recognize` 仍返回 `inference_not_implemented`，`recognitionSupported` 仍为 `false`，真实 PP-OCRv5 推理、iOS、真实 ASR Provider 和真实 LLM 服务兼容性尚待验证。
 
-进度与结论以仓库根目录的 `tracking/CURRENT.md` 和 `research/spikes/SPK-001-cross-platform-framework.md` 为准。
+进度与结论以仓库根目录的 `tracking/CURRENT.md`、`research/spikes/SPK-001-cross-platform-framework.md` 和 `research/spikes/SPK-002-local-ocr.md` 为准。

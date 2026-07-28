@@ -1,9 +1,8 @@
 ﻿# OCR Provider 与可下载模型插件架构
 
-> 任务：`OCR-001`
-> 状态：已完成
+> 基础契约任务：`OCR-001`（已完成）
+> 原生 Runtime 验证：`SPK-002`（DOING）
 > 本地首选：PaddleOCR PP-OCRv5 mobile + ONNX Runtime Mobile
-> 真机验证：`SPK-002`
 
 ## 1. 目标
 
@@ -28,10 +27,11 @@ OCR 只负责识别图片文字，不直接创建 Recipe，也不猜测食材、
 - 支持本地插件和云 API 共用输出，不把供应商类型泄漏给 UI。
 - 扩展文本片段的可选 OCR 证据字段：`confidence`、`sourceMediaOrder`、`sourceProvider`。
 - 覆盖跳过、空结果、部分结果、取消、错误映射和 Runner 进度集成测试。
+- `SPK-002` 阶段扩展模型包下载/校验/激活/删除/恢复、Flutter MethodChannel、Android ONNX Runtime Session 健康检查和后端组合根接线。
 
 ## 3. 非目标
 
-- 本轮不集成 Android/iOS ONNX Runtime，不下载真实模型，不承诺性能或准确率。
+- `OCR-001` 不集成原生 Runtime；`SPK-002` 当前只完成 Android ONNX Runtime Session 健康检查，尚未实现真实图片识别，也不承诺性能或准确率。
 - 本轮不实现具体云 OCR 供应商签名协议。
 - 本轮不下载平台视频、抽帧或实现 ASR。
 - 不允许 Manifest 下载脚本、动态库或可执行文件；首版只允许模型数据和词典。
@@ -129,7 +129,9 @@ Manifest 是不可信输入，必须严格 Schema 校验。核心字段：
 
 - Manifest 来源域名和模型文件域名使用白名单。
 - 下载失败、哈希不符或健康检查失败时不激活，并保留上一可用版本。
-- 临时文件在失败、取消或应用重启恢复时清理。
+- 临时文件在失败或应用重启恢复时清理；显式安装取消仍待实现。
+- `active.json`、`state.json` 和安装后的 `manifest.json` 使用临时文件原子切换；Windows 目标覆盖失败时使用备份回退。
+- 升级失败保留上一 active 版本与 `installedVersion`；active 包读取必须校验 Manifest 包 ID 和版本与指针一致。
 - 模型包不得包含脚本、动态库或可执行文件。
 
 ## 9. 本地与云端边界
@@ -162,14 +164,80 @@ Manifest 是不可信输入，必须严格 Schema 校验。核心字段：
 
 Windows 只验证纯 Dart 契约与流水线；Android/iOS 原生桥接、模型安装和性能必须在真机完成。
 
-## 11. 自动化验证
+## 11. Flutter 原生桥接契约
 
-纯 Dart Provider、Manifest、证据字段和导入预处理流水线已经完成并通过：
+MethodChannel 名称固定为：
 
 ```text
-dart format lib test：通过
-flutter analyze --no-pub：No issues found
-flutter test --no-pub：141 项全部通过
+ai_recipe/local_ocr
 ```
 
-测试覆盖 OCR 输入输出模型、Manifest 严格校验、安装状态、稳定错误、取消、跳过、媒体排序、数量限制、部分结果、文本去重和 Runner 集成。Android/iOS ONNX Runtime 原生桥接、真实模型下载、云 OCR 供应商实现及真机性能指标仍属于 `SPK-002`，不在 `OCR-001` 完成范围内。
+| 方法 | 输入 | 输出 | 当前状态 |
+|---|---|---|---|
+| `probe` | 无 | `runtimeAvailable`、`recognitionSupported`、可选 `runtimeVersion` | Android 已实现 |
+| `healthCheck` | 模型目录与严格 Manifest | 成功返回空；失败返回稳定平台错误 | Android 已实现 |
+| `recognize` | 模型目录、Manifest 和图片输入 | `OcrDocument` JSON | Android 未实现 |
+
+Dart 侧 `PlatformOcrRuntimeBridge` 负责：
+
+- 校验 `probe` 响应类型。
+- 传递模型目录、Manifest 和图片输入。
+- 严格解析 OCR 文档、文本块、坐标和置信度。
+- 将平台错误转换为稳定 `OcrProviderErrorKind`，不暴露原生堆栈或供应商响应。
+
+## 12. Android ONNX Runtime 阶段实现
+
+Android 依赖：
+
+```text
+com.microsoft.onnxruntime:onnxruntime-android:1.20.0
+```
+
+当前原生实现：
+
+1. `probe` 获取 `OrtEnvironment`，Runtime 可加载时返回 `runtimeAvailable: true`。
+2. `healthCheck` 校验模型目录和包内相对路径。
+3. 对 Manifest 中每个 `.onnx` 文件创建 `OrtSession`。
+4. 每个 Session 必须至少包含一个输入和一个输出。
+5. 路径、模型缺失、ONNX 错误和 Runtime 错误使用稳定且脱敏的错误码。
+6. `recognize` 固定返回 `inference_not_implemented`。
+7. `recognitionSupported` 固定为 `false`，因此设备组合根不会把本地 OCR 标记为可用能力。
+
+该实现只证明 Flutter → Android → ONNX Runtime Session 的基础路径可构建和可调用，不证明 PP-OCRv5 真实推理可用。
+
+## 13. Application 与组合根
+
+- `LocalOcrModelUseCases` 暴露状态查询、安装、删除和中断恢复。
+- `AiRecipeBackendFacade` 暴露模型管理入口，并将模型包异常映射为稳定后端错误。
+- 设备组合根装配下载客户端、`DeviceOcrModelPackageService`、`PlatformOcrRuntimeBridge` 和 `PlatformOcrProvider`。
+- 本地 OCR Provider 只有在 active 模型存在且 `recognitionSupported == true` 时才可进入导入执行计划。
+
+## 14. 自动化验证
+
+2026-07-28 从 Windows ASCII Junction `C:\tmp\ai-recipe-mobile` 执行：
+
+```text
+dart --suppress-analytics format lib test：115 个文件，0 个变化
+flutter --suppress-analytics analyze --no-pub：No issues found
+flutter --suppress-analytics test --no-pub：237 项全部通过
+flutter --suppress-analytics build apk --debug：成功
+```
+
+新增测试覆盖：
+
+- 模型包 Manifest、下载、哈希、安装、激活、删除、失败回滚和恢复。
+- 升级失败时保留上一 active 和 `installedVersion`。
+- 成功升级后清理 `.tmp-*` 与 `.bak-*`。
+- active Manifest 包 ID 或版本不一致时拒绝返回可用包。
+- MethodChannel 参数、响应解析、稳定错误和 `PlatformOcrProvider` 行为。
+- Facade 模型管理错误映射与设备组合根能力探测。
+
+### 未验收
+
+- Android 真实 `recognize`、图片预处理、检测/方向/识别和词典解码。
+- 真实 PP-OCRv5 mobile 模型、转换参数、词典与许可证证据。
+- Android 真机体积、加载耗时、1080p 单图耗时、峰值内存和准确率。
+- iOS Runtime、构建和真机验证。
+- 同包并发安装、显式取消、磁盘空间预检、旧版本回收和 Manifest 签名/可信发布机制。
+
+阶段验收记录：`tests/acceptance/SPK-002-local-ocr-runtime-slice-2026-07-28.md`。`SPK-002` 继续保持 `DOING`。

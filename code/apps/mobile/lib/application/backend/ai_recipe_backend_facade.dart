@@ -3,11 +3,14 @@ import '../../domain/access/app_session.dart';
 import '../../domain/importing/import_cancellation_token.dart';
 import '../../domain/importing/import_task.dart';
 import '../../domain/importing/import_task_repository.dart';
+import '../../domain/ocr/ocr_model_manifest.dart';
+import '../../domain/ocr/ocr_model_package_exception.dart';
 import '../../domain/recipe/recipe.dart';
 import '../access/app_access_use_cases.dart';
 import '../importing/import_task_runner.dart';
 import '../importing/import_task_use_cases.dart';
 import '../importing/single_import_task_dispatcher.dart';
+import '../ocr/local_ocr_model_use_cases.dart';
 import '../recipe/recipe_library_commands.dart';
 import '../recipe/recipe_library_use_cases.dart';
 import 'import_execution_plan.dart';
@@ -21,6 +24,9 @@ enum AiRecipeBackendErrorCode {
   providerRouteUnavailable,
   storageUnavailable,
   operationFailed,
+  componentNotInstalled,
+  componentInstallationFailed,
+  componentIncompatible,
 }
 
 class AiRecipeBackendException implements Exception {
@@ -48,6 +54,7 @@ class AiRecipeBackendFacade {
     required ImportTaskRunnerFactory runnerFactory,
     required ImportTaskIdGenerator importTaskIdGenerator,
     required ImportTaskClock clock,
+    this.localOcrModels,
   }) : _importTaskRepository = importTaskRepository,
        _runnerFactory = runnerFactory,
        _importTaskIdGenerator = importTaskIdGenerator,
@@ -59,10 +66,50 @@ class AiRecipeBackendFacade {
   final ImportTaskRunnerFactory _runnerFactory;
   final ImportTaskIdGenerator _importTaskIdGenerator;
   final ImportTaskClock _clock;
+  final LocalOcrModelUseCases? localOcrModels;
 
   Future<AppSession> loadSession() => access.loadSession();
 
   Future<AppCapabilitySnapshot> loadCapabilities() => access.loadCapabilities();
+
+  Future<OcrModelPackageStatus> getLocalOcrModelStatus(String packageId) async {
+    final useCases = _requireLocalOcrModelUseCases();
+    try {
+      return await useCases.getStatus(packageId);
+    } on OcrModelPackageException catch (error) {
+      throw _mapOcrModelPackageException(error);
+    }
+  }
+
+  Future<OcrModelPackageStatus> installLocalOcrModel(
+    OcrModelManifest manifest, {
+    void Function(OcrModelPackageStatus status)? onStatusChanged,
+  }) async {
+    final useCases = _requireLocalOcrModelUseCases();
+    try {
+      return await useCases.install(manifest, onStatusChanged: onStatusChanged);
+    } on OcrModelPackageException catch (error) {
+      throw _mapOcrModelPackageException(error);
+    }
+  }
+
+  Future<void> deleteLocalOcrModel(String packageId) async {
+    final useCases = _requireLocalOcrModelUseCases();
+    try {
+      await useCases.delete(packageId);
+    } on OcrModelPackageException catch (error) {
+      throw _mapOcrModelPackageException(error);
+    }
+  }
+
+  Future<void> recoverLocalOcrModelInstallation() async {
+    final useCases = _requireLocalOcrModelUseCases();
+    try {
+      await useCases.recoverInterruptedInstallations();
+    } on OcrModelPackageException catch (error) {
+      throw _mapOcrModelPackageException(error);
+    }
+  }
 
   Future<ImportTask> createImportTask(
     String sourceUrl, {
@@ -302,6 +349,31 @@ class AiRecipeBackendFacade {
       }
     }
     return cancelImportTask(task.id);
+  }
+
+  LocalOcrModelUseCases _requireLocalOcrModelUseCases() {
+    final useCases = localOcrModels;
+    if (useCases == null) {
+      throw const AiRecipeBackendException(
+        code: AiRecipeBackendErrorCode.componentNotInstalled,
+        message: 'Local OCR model management is not available.',
+      );
+    }
+    return useCases;
+  }
+
+  static AiRecipeBackendException _mapOcrModelPackageException(
+    OcrModelPackageException error,
+  ) {
+    final code = switch (error.kind) {
+      OcrModelPackageErrorKind.incompatiblePlatform ||
+      OcrModelPackageErrorKind.incompatibleAppVersion =>
+        AiRecipeBackendErrorCode.componentIncompatible,
+      OcrModelPackageErrorKind.invalidPackage =>
+        AiRecipeBackendErrorCode.invalidInput,
+      _ => AiRecipeBackendErrorCode.componentInstallationFailed,
+    };
+    return AiRecipeBackendException(code: code, message: error.message);
   }
 
   Future<void> _requirePlanCapabilities(ImportExecutionPlan plan) async {

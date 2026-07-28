@@ -1,5 +1,16 @@
 ﻿## 2026-07-28
 
+### SPK-002 本地 OCR 模型 Runtime 阶段切片
+
+- 新增本地 OCR 模型包服务，支持下载、扩展名限制、大小与 SHA-256 校验、安装、健康检查后激活、删除、失败回滚和中断恢复。
+- `active.json`、`state.json` 和 `manifest.json` 使用临时文件原子切换；Windows 覆盖失败时可通过备份恢复，升级失败保留上一 active 与 `installedVersion`。
+- Flutter 新增 `ai_recipe/local_ocr` MethodChannel 契约，包含 `probe`、`healthCheck`、`recognize`，并完成响应校验和稳定错误映射。
+- Android 集成 ONNX Runtime `1.20.0`，健康检查会创建 ONNX Session 并验证输入输出；`recognize` 仍固定返回 `inference_not_implemented`。
+- 新增 `PlatformOcrProvider`、本地模型 Application Use Cases、Backend Facade 管理入口和设备组合根装配。
+- `dart format lib test` 无变化，`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 237 项通过，Android Debug APK 构建成功。
+- `recognitionSupported` 仍为 `false`；真实 PP-OCRv5 推理、Android 真机性能/准确率和 iOS 路径尚未完成，因此 `SPK-002` 保持 `DOING`。
+## 2026-07-28
+
 ### APP-003 应用后端组合根与统一门面
 
 - 新增 `AiRecipeBackendFacade`，统一暴露会话、能力、菜谱库、导入任务调度、草稿确认和放弃入口。

@@ -4,11 +4,11 @@
 
 ## 当前阶段
 
-后端核心契约与 Application 主链路已形成稳定基线，UI 继续暂缓。当前转入本地 OCR 原生能力验证，使图片型小红书/抖音公开内容可以在移动端离线提取文字，再进入既有 LLM 菜谱生成链路。
+后端核心契约与 Application 主链路已形成稳定基线，UI 继续暂缓。当前主线是 `SPK-002` 本地 OCR 原生能力验证；第一阶段已完成模型包管理、Flutter 原生桥接契约和 Android ONNX Runtime Session 健康检查，但真实图片识别尚未实现。
 
 ## 当前主任务
 
-`SPK-002`：验证 PaddleOCR PP-OCRv5 mobile + ONNX Runtime Mobile 的 Android/iOS 插件与模型下载路径。当前先复核 Spike 与 OCR 插件契约，再实现可测试的模型安装、校验和 Provider 绑定切片。
+`SPK-002`（`DOING`）：验证 PaddleOCR PP-OCRv5 mobile + ONNX Runtime Mobile 的 Android/iOS 插件与模型下载路径。当前阶段切片已经通过自动化与 Android Debug 构建，下一阶段进入真实 PP-OCRv5 mobile 模型、预处理、推理和后处理验证。
 
 ## 已完成基线
 
@@ -24,25 +24,19 @@
 - `APP-001`：菜谱与分类 CRUD、搜索/收藏/状态/分类筛选、回收站生命周期、稳定错误和游客 SQLite 重开持久化。
 - `APP-002`：游客/登录非敏感会话、八类能力矩阵、稳定原因码、SharedPreferences 严格序列化和能力守卫。
 - `APP-003`：统一后端 Facade、设备组合根、能力路线、导入 Runner Factory、草稿确认/放弃、登录用户归属和重复确认保护。
-- Android Debug APK 已通过 ASCII Junction 构建，并在 Android 12 真机安装启动。
-- 最近一次自动化验证：`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 217 项测试通过；3 份 JSON Schema 通过 Draft 2020-12 元 Schema 校验。
+- `SPK-002` 阶段切片：模型包下载、SHA-256/大小校验、安装、激活、删除、失败回滚和中断恢复；Flutter MethodChannel 契约；Android ONNX Runtime Session 健康检查；Application Use Cases、Backend Facade 和设备组合根接线。
+- 最近一次自动化验证：`dart format lib test` 无变化，`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 237 项测试通过，Android Debug APK 构建成功。
 
-## APP-003 验收结论
+## SPK-002 阶段验收结论
 
-1. 页面后续只需依赖 `AiRecipeBackendFacade`、`access` 和 `recipes`，无需直接访问 SQLite、HTTP Client、Provider SDK 或 API Key。
-2. 导入执行计划支持自定义/托管 LLM、本地/云 OCR 和托管 ASR，并在执行入口重新校验能力。
-3. 已覆盖 URL → Adapter → OCR/ASR（按需）→ LLM → 草稿 → 用户确认的完整 Fake 端到端链路。
-4. 登录用户草稿保存对应 `userId`，游客草稿保持 `userId == null`。
-5. 已发布菜谱的确认重试不会重复增加本地版本；放弃草稿采用软删除。
-6. 修复 OCR 后进入 ASR 时进度倒退问题：ASR 全局进度使用 61%–64%，保持处理阶段单调推进。
-
-## SPK-002 当前范围
-
-1. 复核 `research/spikes/SPK-002-local-ocr.md` 与 `docs/architecture/OCR_PLUGIN.md`。
-2. 明确 Flutter ↔ Android/iOS 原生插件边界、PP-OCRv5 mobile 模型文件、Manifest、SHA-256 校验和安装状态。
-3. 实现不依赖 UI 的模型包下载/安装/删除服务与稳定错误。
-4. 建立 Android ONNX Runtime 推理最小切片和 Fake/契约测试；iOS 代码可准备，但 Windows 不能宣称真机通过。
-5. 将真实本地 OCR Provider 绑定到 APP-003 组合根的 `localOcrBuilder`。
+1. `DeviceOcrModelPackageService` 可按受信任主机下载模型文件，校验文件类型、大小和 SHA-256，并在健康检查成功后激活版本。
+2. `active.json`、`state.json` 和安装后的 `manifest.json` 使用临时文件切换；Windows 覆盖失败时使用备份文件回退，失败不会破坏上一 active 版本。
+3. 升级的 `downloading`、`verifying` 和 `failed` 状态保留上一 `installedVersion`；中断恢复优先保留状态或 active 版本。
+4. 读取 active 包时校验包 ID、版本和 Manifest 一致性；损坏或指针不一致时不返回可用包。
+5. Flutter 与原生层使用 `ai_recipe/local_ocr`，定义 `probe`、`healthCheck` 和 `recognize` 三个方法；Dart 侧已覆盖响应解析和稳定错误映射。
+6. Android 已集成 `com.microsoft.onnxruntime:onnxruntime-android:1.20.0`；`healthCheck` 能创建每个 ONNX 文件的 Session，并验证至少一个输入和输出。
+7. 本地 OCR 模型管理已接入 `LocalOcrModelUseCases`、`AiRecipeBackendFacade` 和设备组合根；能力探测会保持本地 OCR 不可用，直到真实识别能力完成。
+8. Android `recognize` 当前固定返回 `inference_not_implemented`，`recognitionSupported` 固定为 `false`，因此不能把本阶段描述为真实 OCR 已完成。
 
 ## 当前实施边界
 
@@ -55,10 +49,11 @@
 
 ## 下一步
 
-1. 读取并校正 SPK-002 的验收范围、依赖版本和风险。
-2. 将 `SPK-002` 更新为 `DOING` 后实施第一个可验证原生 OCR 切片。
-3. 运行 Dart/Flutter 测试、Android 构建或原生单元测试，并记录真实限制。
-4. 完成后同步验收、风险、变更记录和 GitHub。
+1. 固化真实 PP-OCRv5 mobile 模型文件清单、转换参数、词典、许可证证据和受信任发布方式。
+2. 实现 Android 图片读取与预处理、文本检测、方向处理、文字识别、词典解码、阅读顺序和置信度后处理。
+3. 用固定中文菜谱样本验证 Android 真机模型体积、加载耗时、1080p 单图耗时、峰值内存、准确率、取消和损坏模型处理。
+4. 补齐同包并发安装锁、显式取消、磁盘空间预检和旧版本回收策略。
+5. 在 macOS/iPhone 环境实现并验证 iOS ONNX Runtime 桥接；完成前 `SPK-002` 保持 `DOING`。
 
 ## 暂停项
 
@@ -69,7 +64,7 @@
 
 ## 环境约束
 
-- Windows Flutter 构建继续使用 ASCII Junction：`C:\tmp\ai-recipe-mobile`。
+- Windows Flutter 构建固定使用 ASCII Junction：`C:\tmp\ai-recipe-mobile`。直接从中文仓库路径构建可能触发 Flutter Shader Compiler 写入失败。
 - 代码目录：`code/apps/mobile`。
 - 验收记录：根目录 `tests/acceptance/`。
 - 进度状态以本文件和 `tracking/BACKLOG.md` 为准。
