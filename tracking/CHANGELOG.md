@@ -1,8 +1,19 @@
-﻿# 项目变更日志
+# 项目变更日志
 
 > 记录会影响产品、流程、架构、设计、测试或交付方式的有效变化。代码的细粒度变化以后由版本控制记录。
 
 ## 2026-07-28
+
+### IMPORT-001 持久化导入任务内核
+
+- 新增小红书/抖音 URL 校验、平台识别与基础规范化。
+- 新增导入任务生命周期、处理阶段、统一错误码、取消、失败、重试和重启恢复领域规则。
+- 新增只依赖领域 Repository 的 Application 用例。
+- SQLite 升级到 Schema v2，新增 `import_tasks`、恢复索引和 v1 → v2 迁移。
+- `result_recipe_id` 明确为跨聚合逻辑引用，不建立会破坏任务状态不变量的 SQLite 外键。
+- 修复待确认任务取消时未清理草稿逻辑引用的问题。
+- 新增 Domain、Application、SQLite Repository 和迁移测试；`flutter analyze --no-pub` 无问题，41 项测试全部通过。
+- `IMPORT-001` 验收完成并进入 `DONE`；下一后端切片为 `IMPORT-002` 内容获取与导入调度内核。
 
 ### SPK-001 Local-first SQLite 菜谱数据层
 
@@ -22,6 +33,7 @@
 - 配置 `origin` 并将本地 `main` 推送到 `origin/main`，建立默认上游关系。
 - Flutter `build/`、Debug APK 和常见本地敏感文件继续由 `.gitignore` 排除。
 - 新增验收记录 `tests/acceptance/OPS-003-github-publish-2026-07-28.md`。
+
 ## 2026-07-27
 
 ### 新增
@@ -72,5 +84,3 @@
 - Android 12 真机通过 `adb install --no-streaming -r` 安装并成功启动，应用 PID 未发现错误级 Logcat。
 - 新增验收记录 `tests/acceptance/SPK-001-llm-provider-baseline-2026-07-27.md`。
 - `SPK-001` 保持 `DOING`：SQLite、分享、后台任务、通知、安全存储真机、OCR 桥接和 iOS 尚未完成。
-
-

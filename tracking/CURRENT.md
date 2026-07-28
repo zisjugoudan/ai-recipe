@@ -1,4 +1,4 @@
-﻿# 当前工作状态
+# 当前工作状态
 
 > 本文件是项目当前状态的唯一事实源。每次开始工作必须读取，每次结束工作必须更新。  
 > 最后更新：2026-07-28
@@ -9,11 +9,11 @@
 
 ## 当前目标
 
-按照“后端能力优先、UI 后置”的顺序继续执行 `SPK-001` 和 P0 后端能力。统一 LLM Provider 与 Local-first SQLite 菜谱 Repository 已完成，下一步先实施导入任务状态机，再接系统分享、后台任务、通知、安全存储真机流程和 OCR 桥接。
+按照“后端能力优先、UI 后置”的顺序继续执行 P0 后端能力。统一 LLM Provider、Local-first SQLite 菜谱 Repository 和持久化导入任务状态机已完成，下一步建立平台内容获取/提取 Adapter 与导入调度接口，再接系统分享、OCR、ASR 和结构化菜谱生成。
 
 ## 正在进行
 
-`SPK-001` 保持 `DOING`。LLM Provider、Local-first SQLite、Android Debug APK 构建和 Android 12 真机启动已通过；系统分享、后台任务、通知、安全存储真机、OCR 桥接和 iOS 仍待验证。
+`SPK-001` 保持 `DOING`，`IMPORT-001` 已完成。LLM Provider、Local-first SQLite Schema v2、持久化导入任务状态机、Android Debug APK 构建和 Android 12 真机启动已通过；系统分享、后台任务、通知、安全存储真机、OCR 桥接和 iOS 仍待验证。
 
 
 ## 最近完成
@@ -39,21 +39,23 @@
 - 已修正取消令牌分层：`LlmCancellationToken` 位于 Domain 层，不再反向依赖 Provider。
 - `dart format lib test` 已完成。
 - `flutter analyze` 通过：`No issues found`。
-- `flutter test` 通过：27 个测试全部通过，其中新增 6 个 SQLite Repository 测试。
+- `flutter test --no-pub` 通过：41 个测试全部通过，覆盖 LLM Provider、菜谱 SQLite、导入任务 Domain/Application/SQLite 和 v1 → v2 迁移。
 - 新增 SQLite 后 Android Debug APK 仍在纯 ASCII Junction 构建入口下成功构建；APK 位于 `code/apps/mobile/build/app/outputs/flutter-apk/app-debug.apk`。
 - Android 12 真机安装和启动通过，应用 PID 未发现错误级 Logcat。
+- `IMPORT-001` 已实现小红书/抖音 URL 识别、任务状态机、取消/重试/恢复、Application 用例、SQLite v2 持久化和迁移。
 - 验收记录：
   - `tests/acceptance/SPK-001-llm-provider-baseline-2026-07-27.md`
   - `tests/acceptance/SPK-001-local-recipe-database-2026-07-28.md`
+  - `tests/acceptance/IMPORT-001-import-task-state-machine-2026-07-28.md`
 
 ## 下一步
 
-1. `IMPORT-001`：在 UI 前先定义链接导入任务状态机、错误、取消、重试和恢复契约。
-2. `SPK-001`：验证 Android/iOS 系统分享入口接收 URL，并把输入交给导入任务用例。
-3. `SPK-001`：验证后台任务、本地通知和安全存储真机写入/覆盖/删除。
+1. `IMPORT-002`：定义平台内容获取、统一提取结果、Adapter 注册表和可测试的导入调度接口。
+2. `IMPORT-003`：实现合规的公开内容获取路径和失败降级，不实现登录绕过或反爬规避。
+3. `SPK-001`：验证 Android/iOS 系统分享入口接收 URL，并把输入交给 `CreateImportTask`。
 4. `SPK-001` / `SPK-002`：建立 OCR Federated plugin / Platform Channel 最小桥接。
 5. `SPK-003`：使用真实 OpenAI-compatible、Gemini 和本地兼容服务验证协议兼容性与结构化菜谱输出。
-6. `APP-001`：在上述契约稳定后补 Application 用例，再由前端接入菜谱库、分类和详情页面。
+6. `APP-001`：补齐菜谱 Application 用例，再由前端接入菜谱库、分类和详情页面。
 7. 在 macOS/iPhone 环境补齐 iOS 构建、Keychain、本地网络权限和 OCR 插件验证。
 
 ## 当前阻塞与约束
@@ -63,7 +65,8 @@
 - PaddleOCR 的模型转换、体积、速度、内存和真机准确率尚未验证。
 - OpenAI-compatible 与 Gemini 当前通过可注入 Transport 的本地契约测试；真实 Key/服务兼容性留给 `SPK-003`。
 - 真机安全存储写入和删除完整流程尚未验证。
-- SQLite 当前为 Schema v1；标签、来源、导入任务、购物清单、同步元数据和迁移测试尚未加入。
+- SQLite 当前为 Schema v2；标签、来源快照、购物清单和同步元数据尚未加入。
+- 导入调度器尚未实现并发抢占/租约；在该契约完成前只允许单执行器驱动任务。
 
 ## 当前有效文档
 
@@ -72,6 +75,7 @@
 - 用户故事：`docs/product/USER_STORIES.md`
 - 移动端架构：`docs/architecture/MOBILE_ARCHITECTURE.md`
 - Local-first 数据库：`docs/architecture/LOCAL_DATABASE.md`
+- 导入任务流水线：`docs/architecture/IMPORT_PIPELINE.md`
 - OCR 方案：`docs/architecture/OCR_PLUGIN.md`
 - LLM 自定义 API 与 Provider 适配：`docs/architecture/LOCAL_LLM_NETWORK_SECURITY.md`
 - 当前 Sprint：`tracking/sprints/SPRINT-00.md`
@@ -82,6 +86,4 @@
 
 ## 新会话交接说明
 
-从这里继续时，不要重新比较 Flutter 与 React Native，不要恢复 LAN/VPN/HTTPS 产品模式，也不要重复初始化 Git 或重新创建远程仓库。统一 LLM 配置固定为“协议 + API Base URL + 可空 Key + 模型”。当前执行顺序是后端能力优先、UI 后置；先继续 `IMPORT-001` 与 `SPK-001` 剩余验证矩阵，所有真实实验数据必须写入 Spike 和验收记录。
-
-
+从这里继续时，不要重新比较 Flutter 与 React Native，不要恢复 LAN/VPN/HTTPS 产品模式，也不要重复初始化 Git 或重新创建远程仓库。统一 LLM 配置固定为“协议 + API Base URL + 可空 Key + 模型”。当前执行顺序是后端能力优先、UI 后置；先继续 `IMPORT-002` 内容获取与单执行器调度内核，`SPK-001` 剩余真机能力按后端优先顺序推进，所有真实实验数据必须写入 Spike 和验收记录。

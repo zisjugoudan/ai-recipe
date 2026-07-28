@@ -6,7 +6,7 @@ class AppDatabase {
     : _factory = factory ?? databaseFactory,
       _databasePath = databasePath;
 
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
   static const String defaultFileName = 'ai_recipe.db';
 
   final DatabaseFactory _factory;
@@ -29,6 +29,7 @@ class AppDatabase {
           await database.execute('PRAGMA foreign_keys = ON');
         },
         onCreate: _createSchema,
+        onUpgrade: _upgradeSchema,
       ),
     );
   }
@@ -141,6 +142,66 @@ class AppDatabase {
     await database.execute(
       'CREATE INDEX idx_categories_sort '
       'ON recipe_categories(sort_order, name)',
+    );
+    await _createImportTaskSchema(database);
+  }
+
+  static Future<void> _upgradeSchema(
+    Database database,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    if (oldVersion < 2) {
+      await _createImportTaskSchema(database);
+    }
+  }
+
+  static Future<void> _createImportTaskSchema(Database database) async {
+    await database.execute('''
+      CREATE TABLE import_tasks (
+        id TEXT PRIMARY KEY NOT NULL,
+        source_url TEXT NOT NULL,
+        normalized_url TEXT NOT NULL,
+        source_platform TEXT NOT NULL
+          CHECK (source_platform IN ('xiaohongshu', 'douyin')),
+        status TEXT NOT NULL
+          CHECK (status IN (
+            'queued', 'running', 'needsReview',
+            'completed', 'failed', 'cancelled'
+          )),
+        stage TEXT NOT NULL
+          CHECK (stage IN (
+            'queued', 'fetching', 'extracting', 'ocr', 'transcribing',
+            'generating', 'review', 'completed', 'failed', 'cancelled'
+          )),
+        progress REAL NOT NULL CHECK (progress >= 0 AND progress <= 1),
+        attempt INTEGER NOT NULL CHECK (attempt >= 1),
+        max_attempts INTEGER NOT NULL CHECK (max_attempts >= attempt),
+        error_code TEXT,
+        error_message TEXT,
+        retryable INTEGER NOT NULL DEFAULT 0 CHECK (retryable IN (0, 1)),
+        result_recipe_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        started_at INTEGER,
+        completed_at INTEGER,
+        cancelled_at INTEGER,
+        next_retry_at INTEGER,
+        local_version INTEGER NOT NULL CHECK (local_version >= 1),
+        deleted_at INTEGER
+      )
+    ''');
+    await database.execute(
+      'CREATE INDEX idx_import_tasks_status_updated '
+      'ON import_tasks(status, updated_at)',
+    );
+    await database.execute(
+      'CREATE INDEX idx_import_tasks_recovery '
+      'ON import_tasks(status, retryable, next_retry_at)',
+    );
+    await database.execute(
+      'CREATE INDEX idx_import_tasks_deleted_at '
+      'ON import_tasks(deleted_at)',
     );
   }
 }

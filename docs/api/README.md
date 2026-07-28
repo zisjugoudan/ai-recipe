@@ -11,14 +11,17 @@
 5. API 错误统一映射为项目错误码。
 6. 契约测试放在 `tests/integration/`。
 
+## 已建立契约
+
+- `import-task.schema.json`：导入任务 v1，已由 Domain、Application、SQLite v2 和迁移测试验证。
+
 ## 计划契约
 
 - `recipe.schema.json`
-- `import-task.schema.json`
 - `llm-provider.schema.json`
 - `ocr-provider.schema.json`
 - `ocr-plugin-manifest.schema.json`
 - `sync-change.schema.json`
 - `error-codes.md`
 
-当前尚处于 Sprint 0，未验证完成的字段不能伪装为稳定 API。
+计划契约在实现和验收完成前不能伪装为稳定 API。

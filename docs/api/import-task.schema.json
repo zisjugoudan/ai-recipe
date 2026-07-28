@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-recipe.local/schemas/import-task.v1.json",
+  "title": "AI Recipe Import Task",
+  "description": "IMPORT-001 持久化导入任务契约。API Key、Cookie 和原始 Provider 请求不属于该契约。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "sourceUrl",
+    "normalizedUrl",
+    "sourcePlatform",
+    "status",
+    "stage",
+    "progress",
+    "attempt",
+    "maxAttempts",
+    "retryable",
+    "createdAt",
+    "updatedAt",
+    "localVersion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "sourceUrl": { "type": "string", "format": "uri" },
+    "normalizedUrl": { "type": "string", "format": "uri" },
+    "sourcePlatform": { "type": "string", "enum": ["xiaohongshu", "douyin"] },
+    "status": { "type": "string", "enum": ["queued", "running", "needsReview", "completed", "failed", "cancelled"] },
+    "stage": { "type": "string", "enum": ["queued", "fetching", "extracting", "ocr", "transcribing", "generating", "review", "completed", "failed", "cancelled"] },
+    "progress": { "type": "number", "minimum": 0, "maximum": 1 },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "maxAttempts": { "type": "integer", "minimum": 1 },
+    "errorCode": { "type": ["string", "null"], "enum": [null, "invalidUrl", "unsupportedPlatform", "contentUnavailable", "authorizationRequired", "fetchFailed", "extractionFailed", "ocrFailed", "asrFailed", "llmFailed", "schemaInvalid", "networkUnavailable", "timeout", "interrupted", "cancelled", "storageFailure", "unknown"] },
+    "errorMessage": { "type": ["string", "null"] },
+    "retryable": { "type": "boolean" },
+    "resultRecipeId": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "startedAt": { "type": ["string", "null"], "format": "date-time" },
+    "completedAt": { "type": ["string", "null"], "format": "date-time" },
+    "cancelledAt": { "type": ["string", "null"], "format": "date-time" },
+    "nextRetryAt": { "type": ["string", "null"], "format": "date-time" },
+    "localVersion": { "type": "integer", "minimum": 1 },
+    "deletedAt": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["needsReview", "completed"] } }, "required": ["status"] },
+      "then": { "required": ["resultRecipeId"], "properties": { "resultRecipeId": { "type": "string", "minLength": 1 } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } }, "required": ["status"] },
+      "then": { "required": ["errorCode"], "properties": { "errorCode": { "type": "string" } } }
+    }
+  ]
+}

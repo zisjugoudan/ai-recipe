@@ -1,4 +1,4 @@
-# 技术架构目录
+﻿# 技术架构目录
 
 本目录存放长期技术架构、模块边界和架构图。完整产品级建议见产品需求文档第 14 章。
 
@@ -15,7 +15,8 @@
 ## 已有文档
 
 - [移动端架构基线](MOBILE_ARCHITECTURE.md)
-- [Local-first 菜谱数据库契约](LOCAL_DATABASE.md)
+- [Local-first 数据库与迁移契约](LOCAL_DATABASE.md)
+- [链接导入任务流水线](IMPORT_PIPELINE.md)
 - [OCR Provider 与本地插件方案](OCR_PLUGIN.md)
 - [LLM 自定义 API 与 Provider 适配方案](LOCAL_LLM_NETWORK_SECURITY.md)
 
@@ -24,6 +25,6 @@
 - `SYNC_METADATA.md`：同步元数据、变更队列和数据库迁移扩展。
 - `SYNC_ENGINE.md`：增量同步、软删除和冲突处理。
 - `AI_PROVIDER.md`：LLM/ASR Provider 契约。
-- `IMPORT_PIPELINE.md`：导入状态机、缓存和重试。
+
 
 技术选型生效前必须写入 `tracking/DECISIONS.md`；技术可行性仍需通过对应 Spike 的真实环境验证。

@@ -11,6 +11,8 @@
 - API Key 与普通配置分离：Key 使用 Keychain/Keystore，普通配置只保存 `secretRef`。
 - 连接测试、HTTP 明文风险提示、统一错误映射、超时与取消令牌基础能力。
 - Provider 请求构造、响应解析、配置校验和设置页 Widget 测试。
+- Local-first SQLite Schema v2、菜谱聚合 Repository 和 v1 → v2 迁移。
+- 可持久化的链接导入任务状态机、Application 用例、取消、重试和重启恢复。
 
 ## 本地运行
 
@@ -50,7 +52,7 @@ Debug APK 已成功生成并在 Android 12 真机安装、启动。详细记录�
 
 - Windows 环境不能完成 iOS 构建、Keychain、本地网络权限和 iPhone 真机验证。
 - iOS 仅加入本地网络用途说明和 `NSAllowsLocalNetworking`；任意局域网 IP 的明文 HTTP 行为仍需在 macOS/iPhone 上实测，不能视为已通过。
-- 尚未验证 SQLite、系统分享、后台任务、本地通知、OCR 原生桥接和真实 LLM 服务兼容性。
+- 尚未验证系统分享、后台任务、本地通知、OCR 原生桥接和真实 LLM 服务兼容性。
 - 设置页当前保存一个活动配置；多配置管理、模型列表读取和菜谱结构化输出属于后续任务。
 
 进度与结论以仓库根目录的 `tracking/CURRENT.md` 和 `research/spikes/SPK-001-cross-platform-framework.md` 为准。
