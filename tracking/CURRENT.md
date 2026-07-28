@@ -15,7 +15,6 @@
 
 `SPK-001` 保持 `DOING`。当前 Flutter 工程已经能够完成 Android Debug APK 构建和 Android 12 真机启动，但完整 Spike 验证矩阵尚未完成。
 
-短期运维任务 OPS-003 正在执行：将本地 main 首次发布到 GitHub 仓库 zisjugoudan/ai-recipe；远程已确认是空仓库。
 
 ## 最近完成
 
@@ -24,6 +23,7 @@
 - 本地 OCR 首选 PaddleOCR PP-OCRv5 mobile + ONNX Runtime Mobile，已记录 `ADR-0009`。
 - 用户更正 LLM 配置模型：不区分网络方案，统一填写协议、API Base URL、可空 Key 和模型；`ADR-0010` 已由 `ADR-0011` 取代。
 - `OPS-002` 已初始化本地 Git 仓库，默认分支为 `main`；没有远程、提交或推送。
+- `OPS-003` 已完成 GitHub 首次发布：`origin` 指向 `zisjugoudan/ai-recipe`，本地 `main` 跟踪 `origin/main`；根提交为 `df55ef4`。
 - `DOC-001` 已将 Flutter、OCR、自定义 LLM API 与 Git 状态同步到长期事实源。
 - 已创建 `code/apps/mobile` Flutter 工程并实现：
   - OpenAI-compatible Chat Completions Adapter。
@@ -68,8 +68,10 @@
 - 技术探索：`tracking/SPIKES.md`
 - 当前 Spike：`research/spikes/SPK-001-cross-platform-framework.md`
 - 当前切片验收：`tests/acceptance/SPK-001-llm-provider-baseline-2026-07-27.md`
+- GitHub 首次发布验收：`tests/acceptance/OPS-003-github-publish-2026-07-28.md`
 
 ## 新会话交接说明
 
-从这里继续时，不要重新比较 Flutter 与 React Native，不要恢复 LAN/VPN/HTTPS 产品模式，也不要重复初始化 Git。统一 LLM 配置固定为“协议 + API Base URL + 可空 Key + 模型”。按 `SPK-001` 剩余验证矩阵继续，所有真实实验数据必须写入 Spike 和验收记录。
+从这里继续时，不要重新比较 Flutter 与 React Native，不要恢复 LAN/VPN/HTTPS 产品模式，也不要重复初始化 Git 或重新创建远程仓库。统一 LLM 配置固定为“协议 + API Base URL + 可空 Key + 模型”。按 `SPK-001` 剩余验证矩阵继续，所有真实实验数据必须写入 Spike 和验收记录。
+
 

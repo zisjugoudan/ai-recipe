@@ -2,6 +2,16 @@
 
 > 记录会影响产品、流程、架构、设计、测试或交付方式的有效变化。代码的细粒度变化以后由版本控制记录。
 
+## 2026-07-28
+
+### GitHub 首次发布
+
+- 新增 `OPS-003`，将本地仓库发布到 GitHub 仓库 `zisjugoudan/ai-recipe`。
+- 推送前确认远程仓库没有已有引用，避免覆盖远程历史。
+- 创建根提交 `df55ef4 chore: initialize AI recipe project`。
+- 配置 `origin` 并将本地 `main` 推送到 `origin/main`，建立默认上游关系。
+- Flutter `build/`、Debug APK 和常见本地敏感文件继续由 `.gitignore` 排除。
+- 新增验收记录 `tests/acceptance/OPS-003-github-publish-2026-07-28.md`。
 ## 2026-07-27
 
 ### 新增
@@ -52,4 +62,5 @@
 - Android 12 真机通过 `adb install --no-streaming -r` 安装并成功启动，应用 PID 未发现错误级 Logcat。
 - 新增验收记录 `tests/acceptance/SPK-001-llm-provider-baseline-2026-07-27.md`。
 - `SPK-001` 保持 `DOING`：SQLite、分享、后台任务、通知、安全存储真机、OCR 桥接和 iOS 尚未完成。
+
 

@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|
 | OPS-001 | P0 | DONE | 建立本地项目执行体系 | 目录分离；根目录必读规程；进度、任务、决策、风险、设计、测试模板可用 | `AGENTS.md` |
 | OPS-002 | P0 | DONE | 初始化本地 Git 仓库 | `main` 分支可用；忽略规则生效；无远程和首次提交；验收记录完成 | `tests/acceptance/OPS-002-git-init-2026-07-27.md` |
-| OPS-003 | P0 | DOING | 发布项目到 GitHub | 关联 zisjugoudan/ai-recipe；创建首次提交并推送 main；验证远程分支和敏感文件排除 | 	racking/CHANGELOG.md |
+| OPS-003 | P0 | DONE | 发布项目到 GitHub | `origin` 已关联 `zisjugoudan/ai-recipe`；首次提交和 `main` 推送完成；上游与敏感文件排除已验证 | `tests/acceptance/OPS-003-github-publish-2026-07-28.md` |
 | DOC-001 | P0 | DONE | 同步本轮技术方向到长期事实源 | 产品、流程、架构、任务与验收文档一致；Markdown 编码和链接检查通过 | `tests/acceptance/DOC-001-technical-direction-sync-2026-07-27.md` |
 | SPK-001 | P0 | DOING | Flutter 关键能力基线验证 | LLM Provider、21 项测试、Android APK 构建与真机启动已通过；数据库、分享、后台任务、通知、安全存储真机、OCR 桥接和 iOS 仍待验证 | `research/spikes/SPK-001-cross-platform-framework.md` |
 | SPK-002 | P0 | TODO | PaddleOCR 本地引擎与插件验证 | Android/iOS 至少各验证一条 PP-OCRv5 mobile + ONNX Runtime 可行路径及模型下载流程 | `research/spikes/SPK-002-local-ocr.md` |
@@ -35,5 +35,6 @@
 ## 完成定义
 
 任务进入 `DONE` 前必须满足验收、测试记录、文档同步、已知缺陷说明和当前状态更新。
+
 
 
