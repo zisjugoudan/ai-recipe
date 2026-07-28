@@ -35,6 +35,25 @@ void main() {
     expect(downstream.callCount, 1);
   });
 
+  test('reports progress after OCR and before LLM generation', () async {
+    final events = <(ImportTaskStage, double)>[];
+    final processor = AsrEnrichingImportContentProcessor(
+      provider: FakeAsrProvider((input, token) async {
+        return sampleAsrTranscript();
+      }),
+      downstream: _successfulDownstream(),
+    );
+
+    await processor.process(
+      buildContent(source),
+      onProgress: (stage, progress) async => events.add((stage, progress)),
+    );
+
+    expect(events.first, (ImportTaskStage.transcribing, 0.61));
+    expect(events.last.$1, ImportTaskStage.transcribing);
+    expect(events.last.$2, closeTo(0.64, 0.000001));
+  });
+
   test('fails before downstream when ASR is required without media', () async {
     final provider = FakeAsrProvider((input, token) async {
       return sampleAsrTranscript();

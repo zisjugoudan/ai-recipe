@@ -1,5 +1,16 @@
 ﻿## 2026-07-28
 
+### APP-003 应用后端组合根与统一门面
+
+- 新增 `AiRecipeBackendFacade`，统一暴露会话、能力、菜谱库、导入任务调度、草稿确认和放弃入口。
+- 新增 `ImportExecutionPlan` 与 `ImportTaskRunnerFactory`，按自定义/托管 LLM、本地/云 OCR 和托管 ASR 路线执行能力校验并装配 Provider。
+- 新增设备运行时能力仓库与设备组合根，集中管理 SQLite、SharedPreferences、安全 LLM 配置、公开内容 Adapter 和 Provider Builder 生命周期。
+- LLM 草稿 Processor 传播当前会话 `userId`：登录用户草稿归属用户，游客草稿保持本地匿名。
+- 草稿确认强制发布，已发布菜谱的确认重试不会重复增加本地版本；放弃草稿执行软删除并取消任务。
+- 修复 OCR 后进入 ASR 时全局进度从 60% 倒退到 35% 的缺陷，ASR 现固定使用 61%–64% 进度区间并加入回归测试。
+- 新增 Facade、组合根、运行时能力、Runner Factory、执行计划和幂等确认测试。
+- `dart format lib test` 无额外变化，`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 217 项全部通过。
+- `APP-003` 进入 `DONE`；下一项后端主任务转向 `SPK-002` 本地 OCR 原生插件与模型下载验证。
 ### APP-002 游客/登录会话与后端能力策略
 
 - 新增纯 Dart `AppSession`，区分游客与已认证用户，但不存储或传递认证 Token。

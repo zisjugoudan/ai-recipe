@@ -12,11 +12,12 @@
 | OPS-003 | P0 | DONE | 发布项目到 GitHub | `origin` 已关联 `zisjugoudan/ai-recipe`；首次提交和 `main` 推送完成；上游与敏感文件排除已验证 | `tests/acceptance/OPS-003-github-publish-2026-07-28.md` |
 | DOC-001 | P0 | DONE | 同步本轮技术方向到长期事实源 | 产品、流程、架构、任务与验收文档一致；Markdown 编码和链接检查通过 | `tests/acceptance/DOC-001-technical-direction-sync-2026-07-27.md` |
 | SPK-001 | P0 | BLOCKED | Flutter 关键能力基线验证 | LLM Provider、SQLite v2、41 项测试和 Android APK 已通过；分享、后台任务、通知、安全存储真机、OCR 桥接和 iOS 仍待验证 | `research/spikes/SPK-001-cross-platform-framework.md` |
-| SPK-002 | P0 | TODO | PaddleOCR 本地引擎与插件验证 | Android/iOS 至少各验证一条 PP-OCRv5 mobile + ONNX Runtime 可行路径及模型下载流程 | `research/spikes/SPK-002-local-ocr.md` |
+| SPK-002 | P0 | DOING | PaddleOCR 本地引擎与插件验证 | Android/iOS 至少各验证一条 PP-OCRv5 mobile + ONNX Runtime 可行路径及模型下载流程 | `research/spikes/SPK-002-local-ocr.md` |
 | SPK-003 | P0 | TODO | 自定义 LLM API 多协议兼容性验证 | 验证 OpenAI-compatible、Gemini、本地兼容服务、超时、取消和结构化输出 | `research/spikes/SPK-003-local-llm-api.md` |
 | ARCH-001 | P0 | TODO | 确定移动端架构与代码结构 | 按 Flutter 架构基线初始化可运行工程 | `docs/architecture/MOBILE_ARCHITECTURE.md` |
 | APP-001 | P0 | DONE | 创建本地优先菜谱库后端用例 | 菜谱/分类 CRUD、筛选、回收站、稳定错误和游客 SQLite 重开已通过 176 项全量测试 | `docs/architecture/RECIPE_LIBRARY_APPLICATION.md` |
 | APP-002 | P0 | DONE | 实现游客模式后端能力策略 | 会话元数据、八类能力矩阵、稳定原因码、能力守卫和 SharedPreferences 严格序列化已通过 197 项全量测试 | `docs/architecture/APP_ACCESS_CAPABILITIES.md` |
+| APP-003 | P0 | DONE | 建立应用后端组合根与主功能统一门面 | 统一 Facade、设备组合根、能力路线、草稿确认/放弃、重复确认保护和完整导入链路已通过 217 项全量测试 | `docs/architecture/APPLICATION_BACKEND_FACADE.md` |
 | IMPORT-001 | P0 | DONE | 定义导入任务状态机 | 状态、错误、取消、重试、重启恢复、SQLite v2 迁移和 Application 用例已通过 41 项全量测试 | `docs/architecture/IMPORT_PIPELINE.md` |
 | IMPORT-002 | P0 | DONE | 定义内容获取与导入调度内核 | 统一内容 Schema、Adapter Registry、Runner、单执行器 Dispatcher、取消和稳定错误映射已通过自动化验收 | `docs/architecture/IMPORT_CONTENT_ADAPTER.md` |
 | IMPORT-003 | P0 | DONE | 实现公开内容获取与降级 | 小红书/抖音公开 Fixture、受限 HTTP Transport、稳定错误映射和人工粘贴/媒体降级已通过 94 项全量测试 | `docs/architecture/PUBLIC_CONTENT_IMPORT.md` |

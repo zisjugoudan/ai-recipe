@@ -79,7 +79,7 @@ class AsrEnrichingImportContentProcessor implements ImportContentProcessor {
       }
     }
 
-    await onProgress(ImportTaskStage.transcribing, 0.35);
+    await onProgress(ImportTaskStage.transcribing, 0.61);
     final seen = <String>{
       if (content.title case final value?) value.trim(),
       if (content.description case final value?) value.trim(),
@@ -149,7 +149,7 @@ class AsrEnrichingImportContentProcessor implements ImportContentProcessor {
       }
       await onProgress(
         ImportTaskStage.transcribing,
-        0.35 + (0.25 * (index + 1) / mediaItems.length),
+        0.61 + (0.03 * (index + 1) / mediaItems.length),
       );
     }
 

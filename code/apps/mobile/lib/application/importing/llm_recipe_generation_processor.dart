@@ -24,6 +24,7 @@ class LlmRecipeGenerationProcessor implements ImportContentProcessor {
     required RecipeRepository recipeRepository,
     required RecipeDraftIdGenerator idGenerator,
     required RecipeGenerationClock clock,
+    String? userId,
     RecipeGenerationPromptBuilder promptBuilder =
         const RecipeGenerationPromptBuilder(),
     RecipeGenerationSchemaParser schemaParser =
@@ -34,6 +35,7 @@ class LlmRecipeGenerationProcessor implements ImportContentProcessor {
        _recipeRepository = recipeRepository,
        _idGenerator = idGenerator,
        _clock = clock,
+       _userId = _normalizeUserId(userId),
        _promptBuilder = promptBuilder,
        _schemaParser = schemaParser;
 
@@ -43,6 +45,7 @@ class LlmRecipeGenerationProcessor implements ImportContentProcessor {
   final RecipeRepository _recipeRepository;
   final RecipeDraftIdGenerator _idGenerator;
   final RecipeGenerationClock _clock;
+  final String? _userId;
   final RecipeGenerationPromptBuilder _promptBuilder;
   final RecipeGenerationSchemaParser _schemaParser;
 
@@ -139,6 +142,7 @@ class LlmRecipeGenerationProcessor implements ImportContentProcessor {
       final now = _clock().toUtc();
       return Recipe(
         id: _nextId(),
+        userId: _userId,
         title: generated.title,
         description: generated.description,
         coverImage: _coverImage(content),
@@ -212,6 +216,11 @@ class LlmRecipeGenerationProcessor implements ImportContentProcessor {
       );
     }
     return value;
+  }
+
+  static String? _normalizeUserId(String? userId) {
+    final normalized = userId?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
   }
 
   static String? _coverImage(ImportContent content) {

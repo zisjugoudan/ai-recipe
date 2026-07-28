@@ -1,17 +1,14 @@
 ﻿# 当前工作状态
 
-> 本文件是项目当前状态的唯一事实源。每次开始工作必须读取，每次结束工作必须更新。
-> 最后更新：2026-07-28
+> 更新时间：2026-07-28
 
 ## 当前阶段
 
-**Sprint 0：后端基础能力与核心导入链路建设**
-
-UI 暂缓。当前优先完成 Domain、Application、Data 和 Provider，使后续 Flutter 页面只依赖稳定用例和契约开发。
+后端核心契约与 Application 主链路已形成稳定基线，UI 继续暂缓。当前转入本地 OCR 原生能力验证，使图片型小红书/抖音公开内容可以在移动端离线提取文字，再进入既有 LLM 菜谱生成链路。
 
 ## 当前主任务
 
-`APP-002` 已完成。下一主任务将进入应用后端依赖装配与主功能统一门面的设计，使菜谱库、链接导入、AI 生成、会话和能力策略可以由后续 Flutter 页面通过稳定入口组合调用。
+`SPK-002`：验证 PaddleOCR PP-OCRv5 mobile + ONNX Runtime Mobile 的 Android/iOS 插件与模型下载路径。当前先复核 Spike 与 OCR 插件契约，再实现可测试的模型安装、校验和 Provider 绑定切片。
 
 ## 已完成基线
 
@@ -26,33 +23,49 @@ UI 暂缓。当前优先完成 Domain、Application、Data 和 Provider，使后
 - `ASR-001`：统一 ASR Provider、分段时间证据、媒体限制、部分结果、稳定错误和 Runner 集成。
 - `APP-001`：菜谱与分类 CRUD、搜索/收藏/状态/分类筛选、回收站生命周期、稳定错误和游客 SQLite 重开持久化。
 - `APP-002`：游客/登录非敏感会话、八类能力矩阵、稳定原因码、SharedPreferences 严格序列化和能力守卫。
+- `APP-003`：统一后端 Facade、设备组合根、能力路线、导入 Runner Factory、草稿确认/放弃、登录用户归属和重复确认保护。
 - Android Debug APK 已通过 ASCII Junction 构建，并在 Android 12 真机安装启动。
-- 最近一次自动化验证：`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 197 项测试通过；3 份 JSON Schema 通过 Draft 2020-12 元 Schema 校验。
+- 最近一次自动化验证：`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 217 项测试通过；3 份 JSON Schema 通过 Draft 2020-12 元 Schema 校验。
+
+## APP-003 验收结论
+
+1. 页面后续只需依赖 `AiRecipeBackendFacade`、`access` 和 `recipes`，无需直接访问 SQLite、HTTP Client、Provider SDK 或 API Key。
+2. 导入执行计划支持自定义/托管 LLM、本地/云 OCR 和托管 ASR，并在执行入口重新校验能力。
+3. 已覆盖 URL → Adapter → OCR/ASR（按需）→ LLM → 草稿 → 用户确认的完整 Fake 端到端链路。
+4. 登录用户草稿保存对应 `userId`，游客草稿保持 `userId == null`。
+5. 已发布菜谱的确认重试不会重复增加本地版本；放弃草稿采用软删除。
+6. 修复 OCR 后进入 ASR 时进度倒退问题：ASR 全局进度使用 61%–64%，保持处理阶段单调推进。
+
+## SPK-002 当前范围
+
+1. 复核 `research/spikes/SPK-002-local-ocr.md` 与 `docs/architecture/OCR_PLUGIN.md`。
+2. 明确 Flutter ↔ Android/iOS 原生插件边界、PP-OCRv5 mobile 模型文件、Manifest、SHA-256 校验和安装状态。
+3. 实现不依赖 UI 的模型包下载/安装/删除服务与稳定错误。
+4. 建立 Android ONNX Runtime 推理最小切片和 Fake/契约测试；iOS 代码可准备，但 Windows 不能宣称真机通过。
+5. 将真实本地 OCR Provider 绑定到 APP-003 组合根的 `localOcrBuilder`。
 
 ## 当前实施边界
 
 - 只处理无需登录即可访问的公开内容。
 - 不实现登录绕过、验证码绕过、签名逆向、访问控制绕过或反爬规避。
-- 平台要求登录、内容不可用或结构变化时，返回稳定错误并引导人工粘贴文本、选择本地图片或选择本地视频。
 - UI 不直接访问 SQLite、HTTP Client 或供应商 SDK。
-- API Key、Authorization Header、完整 Prompt、完整模型响应、完整 OCR 文本和本地原图路径不得写入日志或 Git。
+- API Key、Authorization Header、完整 Prompt、完整模型响应、完整 OCR/ASR 文本和本地原图路径不得写入日志或 Git。
 - AI 输出必须经过 Schema 校验，并保留用户确认步骤，不直接覆盖已有菜谱。
+- Windows 环境不能完成 iOS 构建、Keychain、本地网络权限和 iPhone 真机验证。
 
 ## 下一步
 
-1. 建立下一任务的后端组合根与统一门面契约，不进入 UI 实现。
-2. 将现有菜谱库、链接导入、OCR/ASR、LLM 生成、会话与能力策略按稳定接口装配。
-3. 明确游客自定义 LLM、本地 OCR 与登录托管服务的 Provider 选择和失败降级。
-4. 为核心链路补充端到端 Application 测试，再交给 Flutter 页面依赖。
-5. 登录协议、Token 安全仓库、真实云同步和真实 OCR/ASR Provider 继续独立排期。
+1. 读取并校正 SPK-002 的验收范围、依赖版本和风险。
+2. 将 `SPK-002` 更新为 `DOING` 后实施第一个可验证原生 OCR 切片。
+3. 运行 Dart/Flutter 测试、Android 构建或原生单元测试，并记录真实限制。
+4. 完成后同步验收、风险、变更记录和 GitHub。
 
 ## 暂停项
 
 - UI/UX 页面实现暂缓，等待后端核心用例与契约稳定。
 - `SPK-001` 其余能力暂缓：系统分享、后台任务、通知和安全存储真机验证。
-- `SPK-002` PaddleOCR 原生桥接待后续真机验证。
-- `SPK-003` 真实 OpenAI-compatible、Gemini 和本地兼容服务互操作待后续验证。
-- Windows 环境不能完成 iOS 构建、Keychain、本地网络权限和 iPhone 真机验证。
+- `SPK-003` 真实 OpenAI-compatible、Gemini 和本地兼容服务互操作需要真实 API 地址与测试 Key。
+- 真实托管 LLM、云 OCR、托管 ASR 和云同步后端尚未实现。
 
 ## 环境约束
 
