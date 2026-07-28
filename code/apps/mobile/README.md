@@ -23,9 +23,9 @@
 - IMPORT-003 公开内容 HTTP Transport、小红书/抖音公共元数据 Adapter、HTML/JSON-LD 解析和人工粘贴/本地媒体降级。
 - AI-002 受限 Prompt、严格结构化菜谱 Schema、草稿持久化、错误映射和保存提交点。
 - OCR-001 统一 OCR Provider、严格模型 Manifest、OCR 证据字段和导入预处理流水线。
-- SPK-002 阶段切片：本地 OCR 模型包下载/校验/安装/激活/删除/恢复、同包进程内串行队列，`ai_recipe/local_ocr` MethodChannel，Android ONNX Runtime Session 健康检查，以及 Application/Facade/组合根接线。
+- SPK-002 阶段切片：本地 OCR 模型包下载/校验/安装/激活/删除/恢复、同一服务实例内串行队列、显式取消、Android 空间预检、旧版本回收，`ai_recipe/local_ocr` MethodChannel，Android ONNX Runtime Session 健康检查，以及 Application/Facade/组合根接线。
 - ASR-001 统一 ASR Provider、分段时间证据、音视频限制、部分结果和导入预处理流水线。
-- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 244 项测试通过。
+- 当前 `dart format lib test` 共 118 个文件、0 个变化；`flutter analyze --no-pub` 无问题；`flutter test --no-pub` 共 259 项测试通过。
 
 ## 本地运行
 
@@ -58,6 +58,8 @@ Debug APK 已成功生成并在 Android 12 真机安装、启动。详细记录�
 
 `tests/acceptance/SPK-002-local-ocr-runtime-slice-2026-07-28.md`
 
+`tests/acceptance/SPK-002-ocr-model-install-reliability-2026-07-28.md`
+
 ## 安全约束
 
 - 不得将真实 API Key、Token、Authorization Header、Prompt 或完整模型响应提交到 Git 或写入日志。
@@ -72,6 +74,6 @@ Debug APK 已成功生成并在 Android 12 真机安装、启动。详细记录�
 - iOS 仅加入本地网络用途说明和 `NSAllowsLocalNetworking`；任意局域网 IP 的明文 HTTP 行为仍需在 macOS/iPhone 上实测，不能视为已通过。
 - 尚未验证系统分享、后台任务、本地通知和真实 LLM 服务兼容性。OCR 原生桥接目前只完成 Android Runtime 探测和 Session 健康检查。
 - 设置页当前保存一个活动配置；多配置管理和模型列表读取属于后续任务。
-- 已支持从已有文本、OCR 或 ASR 结果生成结构化菜谱草稿；本地 OCR 模型包管理和 Android ONNX Runtime Session 健康检查已完成，但 Android `recognize` 仍返回 `inference_not_implemented`，`recognitionSupported` 仍为 `false`，真实 PP-OCRv5 推理、iOS、真实 ASR Provider 和真实 LLM 服务兼容性尚待验证。
+- 已支持从已有文本、OCR 或 ASR 结果生成结构化菜谱草稿；本地 OCR 模型包管理、安装可靠性基础切片和 Android ONNX Runtime Session 健康检查已完成，但 Android `recognize` 仍返回 `inference_not_implemented`，`recognitionSupported` 仍为 `false`，真实 PP-OCRv5 推理、iOS、跨进程互斥、真实 ASR Provider 和真实 LLM 服务兼容性尚待验证。
 
 进度与结论以仓库根目录的 `tracking/CURRENT.md`、`research/spikes/SPK-001-cross-platform-framework.md` 和 `research/spikes/SPK-002-local-ocr.md` 为准。

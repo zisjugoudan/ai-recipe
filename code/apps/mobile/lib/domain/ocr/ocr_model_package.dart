@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'ocr_model_manifest.dart';
+import 'ocr_model_package_exception.dart';
 
 class OcrInstalledModelPackage {
   OcrInstalledModelPackage({
@@ -25,6 +27,7 @@ abstract interface class OcrModelPackageService {
   Future<OcrModelPackageStatus> install(
     OcrModelManifest manifest, {
     void Function(OcrModelPackageStatus status)? onStatusChanged,
+    OcrModelInstallCancellationToken? cancellationToken,
   });
 
   Future<void> delete(String packageId);
@@ -34,3 +37,25 @@ abstract interface class OcrModelPackageService {
 
 typedef OcrModelPackageHealthCheck =
     Future<void> Function(OcrInstalledModelPackage package);
+
+class OcrModelInstallCancellationToken {
+  final Completer<void> _completer = Completer<void>();
+
+  bool get isCancelled => _completer.isCompleted;
+  Future<void> get whenCancelled => _completer.future;
+
+  void cancel() {
+    if (!_completer.isCompleted) {
+      _completer.complete();
+    }
+  }
+
+  void throwIfCancelled() {
+    if (isCancelled) {
+      throw const OcrModelPackageException(
+        kind: OcrModelPackageErrorKind.cancelled,
+        message: 'OCR model package installation was cancelled.',
+      );
+    }
+  }
+}

@@ -66,6 +66,36 @@ void main() {
     expect(active!.version, '1.0.0');
   });
 
+  test(
+    'keeps an activated package when the final status callback fails',
+    () async {
+      final bytes = utf8.encode('fake onnx model');
+      downloads.add('https://models.example.test/det.onnx', bytes);
+      final service = newService(root, downloads);
+
+      final status = await service.install(
+        manifest(version: '1.0.0', bytes: bytes),
+        onStatusChanged: (status) {
+          if (status.state == OcrModelInstallState.installed) {
+            throw StateError('observer failed after activation');
+          }
+        },
+      );
+
+      expect(status.state, OcrModelInstallState.installed);
+      expect(status.installedVersion, '1.0.0');
+      final active = await service.getActivePackage(
+        'paddleocr-ppocrv5-mobile-zh',
+      );
+      expect(active?.version, '1.0.0');
+      final persistedStatus = await service.getStatus(
+        'paddleocr-ppocrv5-mobile-zh',
+      );
+      expect(persistedStatus.state, OcrModelInstallState.installed);
+      expect(persistedStatus.installedVersion, '1.0.0');
+    },
+  );
+
   test('serializes concurrent installs for the same model package', () async {
     final bytes = utf8.encode('fake onnx model');
     downloads.add('https://models.example.test/det.onnx', bytes);
@@ -394,6 +424,199 @@ void main() {
     );
   });
 
+  test('cancels an in-flight download and clears staging state', () async {
+    final firstChunk = utf8.encode('fake ');
+    final secondChunk = utf8.encode('onnx model');
+    final bytes = <int>[...firstChunk, ...secondChunk];
+    downloads.addChunks('https://models.example.test/det.onnx', <List<int>>[
+      firstChunk,
+      secondChunk,
+    ]);
+    final service = newService(root, downloads);
+    final token = OcrModelInstallCancellationToken();
+
+    await expectLater(
+      service.install(
+        manifest(version: '1.0.0', bytes: bytes),
+        cancellationToken: token,
+        onStatusChanged: (status) {
+          if (status.state == OcrModelInstallState.downloading &&
+              status.progress > 0) {
+            token.cancel();
+          }
+        },
+      ),
+      throwsA(
+        isA<OcrModelPackageException>().having(
+          (error) => error.kind,
+          'kind',
+          OcrModelPackageErrorKind.cancelled,
+        ),
+      ),
+    );
+
+    final status = await service.getStatus('paddleocr-ppocrv5-mobile-zh');
+    expect(status.state, OcrModelInstallState.failed);
+    expect(status.failureCode, OcrModelPackageErrorKind.cancelled.name);
+    expect(
+      await service.getActivePackage('paddleocr-ppocrv5-mobile-zh'),
+      isNull,
+    );
+    final stagingRoot = Directory(
+      '${root.path}/ocr-models/paddleocr-ppocrv5-mobile-zh/.staging',
+    );
+    final stagingEntries = await stagingRoot.exists()
+        ? await stagingRoot.list().toList()
+        : <FileSystemEntity>[];
+    expect(stagingEntries, isEmpty);
+  });
+
+  test('cancelled upgrade preserves the previous active version', () async {
+    final firstBytes = utf8.encode('first model');
+    downloads.add('https://models.example.test/det.onnx', firstBytes);
+    final service = newService(root, downloads);
+    await service.install(manifest(version: '1.0.0', bytes: firstBytes));
+
+    final firstChunk = utf8.encode('second ');
+    final secondChunk = utf8.encode('model');
+    final secondBytes = <int>[...firstChunk, ...secondChunk];
+    downloads.addChunks('https://models.example.test/det.onnx', <List<int>>[
+      firstChunk,
+      secondChunk,
+    ]);
+    final token = OcrModelInstallCancellationToken();
+
+    await expectLater(
+      service.install(
+        manifest(version: '2.0.0', bytes: secondBytes),
+        cancellationToken: token,
+        onStatusChanged: (status) {
+          if (status.state == OcrModelInstallState.downloading &&
+              status.progress > 0) {
+            token.cancel();
+          }
+        },
+      ),
+      throwsA(
+        isA<OcrModelPackageException>().having(
+          (error) => error.kind,
+          'kind',
+          OcrModelPackageErrorKind.cancelled,
+        ),
+      ),
+    );
+
+    final active = await service.getActivePackage(
+      'paddleocr-ppocrv5-mobile-zh',
+    );
+    expect(active, isNotNull);
+    expect(active!.version, '1.0.0');
+    final status = await service.getStatus('paddleocr-ppocrv5-mobile-zh');
+    expect(status.state, OcrModelInstallState.failed);
+    expect(status.installedVersion, '1.0.0');
+  });
+
+  test('rejects insufficient storage before opening a download', () async {
+    final bytes = utf8.encode('fake onnx model');
+    downloads.add('https://models.example.test/det.onnx', bytes);
+    final service = newService(
+      root,
+      downloads,
+      storageCapacityProvider: (_) async => bytes.length - 1,
+      minimumFreeSpaceReserveBytes: 0,
+    );
+
+    await expectLater(
+      service.install(manifest(version: '1.0.0', bytes: bytes)),
+      throwsA(
+        isA<OcrModelPackageException>().having(
+          (error) => error.kind,
+          'kind',
+          OcrModelPackageErrorKind.insufficientStorage,
+        ),
+      ),
+    );
+
+    expect(downloads.openedUrls, isEmpty);
+    final status = await service.getStatus('paddleocr-ppocrv5-mobile-zh');
+    expect(status.state, OcrModelInstallState.failed);
+    expect(
+      status.failureCode,
+      OcrModelPackageErrorKind.insufficientStorage.name,
+    );
+  });
+
+  test('continues installation when storage capacity is unknown', () async {
+    final bytes = utf8.encode('fake onnx model');
+    downloads.add('https://models.example.test/det.onnx', bytes);
+    final service = newService(
+      root,
+      downloads,
+      storageCapacityProvider: (_) async => null,
+    );
+
+    final status = await service.install(
+      manifest(version: '1.0.0', bytes: bytes),
+    );
+
+    expect(status.state, OcrModelInstallState.installed);
+    expect(downloads.openedUrls, hasLength(1));
+  });
+
+  test(
+    'retains the active and one newest inactive version by default',
+    () async {
+      final service = newService(root, downloads);
+      for (final version in <String>['1.0.0', '2.0.0', '3.0.0']) {
+        final bytes = utf8.encode('model $version');
+        downloads.add('https://models.example.test/det.onnx', bytes);
+        await service.install(manifest(version: version, bytes: bytes));
+      }
+
+      final versionsRoot = Directory(
+        '${root.path}/ocr-models/paddleocr-ppocrv5-mobile-zh/versions',
+      );
+      final versions = await versionsRoot
+          .list()
+          .where((entry) => entry is Directory)
+          .map((entry) => entry.path.split(Platform.pathSeparator).last)
+          .toList();
+
+      expect(versions, unorderedEquals(<String>['2.0.0', '3.0.0']));
+    },
+  );
+
+  test('can prune every inactive model version', () async {
+    final service = newService(root, downloads, retainedInactiveVersions: 0);
+    for (final version in <String>['1.0.0', '2.0.0']) {
+      final bytes = utf8.encode('model $version');
+      downloads.add('https://models.example.test/det.onnx', bytes);
+      await service.install(manifest(version: version, bytes: bytes));
+    }
+
+    final versionsRoot = Directory(
+      '${root.path}/ocr-models/paddleocr-ppocrv5-mobile-zh/versions',
+    );
+    final versions = await versionsRoot
+        .list()
+        .where((entry) => entry is Directory)
+        .map((entry) => entry.path.split(Platform.pathSeparator).last)
+        .toList();
+
+    expect(versions, <String>['2.0.0']);
+  });
+
+  test('rejects negative storage policy values', () {
+    expect(
+      () => newService(root, downloads, minimumFreeSpaceReserveBytes: -1),
+      throwsArgumentError,
+    );
+    expect(
+      () => newService(root, downloads, retainedInactiveVersions: -1),
+      throwsArgumentError,
+    );
+  });
+
   test(
     'delete removes active package and recovery marks interrupted state failed',
     () async {
@@ -438,6 +661,9 @@ DeviceOcrModelPackageService newService(
   FakeDownloadClient downloads, {
   Set<String> trustedHosts = const {'models.example.test'},
   OcrModelPackageHealthCheck? healthCheck,
+  OcrModelStorageCapacityProvider? storageCapacityProvider,
+  int minimumFreeSpaceReserveBytes = 64 * 1024 * 1024,
+  int retainedInactiveVersions = 1,
 }) {
   return DeviceOcrModelPackageService(
     downloadClient: downloads,
@@ -445,6 +671,9 @@ DeviceOcrModelPackageService newService(
     currentPlatform: OcrRuntimePlatform.android,
     appVersion: '1.0.0',
     storageRootProvider: () async => root,
+    storageCapacityProvider: storageCapacityProvider,
+    minimumFreeSpaceReserveBytes: minimumFreeSpaceReserveBytes,
+    retainedInactiveVersions: retainedInactiveVersions,
     healthCheck: healthCheck ?? (_) async {},
   );
 }
@@ -476,18 +705,22 @@ OcrModelManifest manifest({
 }
 
 class FakeDownloadClient implements OcrModelDownloadClient {
-  final Map<String, List<int>> _bytes = <String, List<int>>{};
+  final Map<String, List<List<int>>> _chunks = <String, List<List<int>>>{};
   final List<String> openedUrls = <String>[];
 
   void add(String url, List<int> bytes) {
-    _bytes[url] = bytes;
+    addChunks(url, <List<int>>[bytes]);
+  }
+
+  void addChunks(String url, List<List<int>> chunks) {
+    _chunks[url] = chunks;
   }
 
   @override
   Future<OcrModelDownloadResponse> open(Uri uri) async {
     openedUrls.add(uri.toString());
-    final bytes = _bytes[uri.toString()];
-    if (bytes == null) {
+    final chunks = _chunks[uri.toString()];
+    if (chunks == null) {
       return const OcrModelDownloadResponse(
         statusCode: 404,
         bytes: Stream<List<int>>.empty(),
@@ -495,8 +728,11 @@ class FakeDownloadClient implements OcrModelDownloadClient {
     }
     return OcrModelDownloadResponse(
       statusCode: 200,
-      contentLength: bytes.length,
-      bytes: Stream<List<int>>.fromIterable(<List<int>>[bytes]),
+      contentLength: chunks.fold<int>(
+        0,
+        (total, chunk) => total + chunk.length,
+      ),
+      bytes: Stream<List<int>>.fromIterable(chunks),
     );
   }
 }

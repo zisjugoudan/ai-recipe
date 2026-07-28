@@ -1,6 +1,7 @@
 package com.airecipe.ai_recipe
 
 import ai.onnxruntime.OrtEnvironment
+import android.os.StatFs
 import ai.onnxruntime.OrtException
 import ai.onnxruntime.OrtSession
 import io.flutter.embedding.android.FlutterActivity
@@ -19,6 +20,7 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "probe" -> handleProbe(result)
                 "healthCheck" -> handleHealthCheck(call, result)
+                "getAvailableStorageBytes" -> handleAvailableStorageBytes(call, result)
                 "recognize" -> result.error(
                     "inference_not_implemented",
                     "Local OCR image recognition is not implemented yet.",
@@ -47,6 +49,28 @@ class MainActivity : FlutterActivity() {
                     "runtimeVersion" to null
                 )
             )
+        }
+    }
+
+    private fun handleAvailableStorageBytes(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val args = call.arguments as? Map<*, *>
+                ?: throw LocalOcrException("invalid_input", "Invalid OCR storage request.")
+            val directoryPath = (args["directory"] as? String)?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: throw LocalOcrException("invalid_input", "Missing OCR storage directory.")
+            var existingDirectory: File? = File(directoryPath).absoluteFile
+            while (existingDirectory != null && !existingDirectory.exists()) {
+                existingDirectory = existingDirectory.parentFile
+            }
+            if (existingDirectory == null || !existingDirectory.isDirectory) {
+                throw LocalOcrException("storage_unavailable", "OCR model storage is unavailable.")
+            }
+            result.success(StatFs(existingDirectory.path).availableBytes)
+        } catch (error: LocalOcrException) {
+            result.error(error.code, error.safeMessage, null)
+        } catch (_: Throwable) {
+            result.error("storage_unavailable", "OCR model storage is unavailable.", null)
         }
     }
 

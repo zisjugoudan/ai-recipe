@@ -14,8 +14,13 @@ class LocalOcrModelUseCases {
   Future<OcrModelPackageStatus> install(
     OcrModelManifest manifest, {
     void Function(OcrModelPackageStatus status)? onStatusChanged,
+    OcrModelInstallCancellationToken? cancellationToken,
   }) {
-    return _packageService.install(manifest, onStatusChanged: onStatusChanged);
+    return _packageService.install(
+      manifest,
+      onStatusChanged: onStatusChanged,
+      cancellationToken: cancellationToken,
+    );
   }
 
   Future<void> delete(String packageId) {

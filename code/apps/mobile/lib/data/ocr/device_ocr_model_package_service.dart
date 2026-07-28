@@ -12,6 +12,8 @@ import '../../domain/ocr/ocr_model_package_exception.dart';
 import '../../providers/ocr/http_ocr_model_download_client.dart';
 
 typedef OcrModelStorageRootProvider = Future<Directory> Function();
+typedef OcrModelStorageCapacityProvider =
+    Future<int?> Function(Directory directory);
 
 class DeviceOcrModelPackageService implements OcrModelPackageService {
   DeviceOcrModelPackageService({
@@ -21,6 +23,9 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
     required String appVersion,
     required OcrModelPackageHealthCheck healthCheck,
     OcrModelStorageRootProvider? storageRootProvider,
+    OcrModelStorageCapacityProvider? storageCapacityProvider,
+    int minimumFreeSpaceReserveBytes = 64 * 1024 * 1024,
+    int retainedInactiveVersions = 1,
     Set<String> allowedFileExtensions = const <String>{
       '.onnx',
       '.txt',
@@ -33,6 +38,15 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
        _healthCheck = healthCheck,
        _storageRootProvider =
            storageRootProvider ?? _defaultModelStorageRootProvider,
+       _storageCapacityProvider = storageCapacityProvider,
+       minimumFreeSpaceReserveBytes = _requireNonNegative(
+         minimumFreeSpaceReserveBytes,
+         'minimumFreeSpaceReserveBytes',
+       ),
+       retainedInactiveVersions = _requireNonNegative(
+         retainedInactiveVersions,
+         'retainedInactiveVersions',
+       ),
        _allowedFileExtensions = allowedFileExtensions;
 
   final OcrModelDownloadClient _downloadClient;
@@ -41,6 +55,9 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
   final String _appVersion;
   final OcrModelPackageHealthCheck _healthCheck;
   final OcrModelStorageRootProvider _storageRootProvider;
+  final OcrModelStorageCapacityProvider? _storageCapacityProvider;
+  final int minimumFreeSpaceReserveBytes;
+  final int retainedInactiveVersions;
   final Set<String> _allowedFileExtensions;
   final Map<String, Future<void>> _operationTails = <String, Future<void>>{};
 
@@ -107,18 +124,26 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
   Future<OcrModelPackageStatus> install(
     OcrModelManifest manifest, {
     void Function(OcrModelPackageStatus status)? onStatusChanged,
+    OcrModelInstallCancellationToken? cancellationToken,
   }) async {
     _validateManifest(manifest);
+    cancellationToken?.throwIfCancelled();
     return _runExclusive(
       manifest.packageId,
-      () => _installUnlocked(manifest, onStatusChanged: onStatusChanged),
+      () => _installUnlocked(
+        manifest,
+        onStatusChanged: onStatusChanged,
+        cancellationToken: cancellationToken,
+      ),
     );
   }
 
   Future<OcrModelPackageStatus> _installUnlocked(
     OcrModelManifest manifest, {
     void Function(OcrModelPackageStatus status)? onStatusChanged,
+    OcrModelInstallCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final root = await _packageRoot(manifest.packageId);
     final existing = await getActivePackage(manifest.packageId);
     if (existing?.version == manifest.version) {
@@ -161,8 +186,12 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
       return status;
     }
 
+    var activated = false;
     try {
       await root.create(recursive: true);
+      cancellationToken?.throwIfCancelled();
+      await _ensureStorageCapacity(root, manifest.totalSizeBytes);
+      cancellationToken?.throwIfCancelled();
       await versionsRoot.create(recursive: true);
       if (await versionRoot.exists()) {
         await versionRoot.delete(recursive: true);
@@ -177,9 +206,11 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
       var downloaded = 0;
       final total = manifest.totalSizeBytes;
       for (final file in manifest.files) {
+        cancellationToken?.throwIfCancelled();
         await _downloadFile(
           file,
           stagingRoot,
+          cancellationToken: cancellationToken,
           onBytes: (count) async {
             downloaded += count;
             await emit(
@@ -191,6 +222,7 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
         );
       }
 
+      cancellationToken?.throwIfCancelled();
       await _writeManifest(stagingRoot, manifest);
       await emit(
         OcrModelInstallState.verifying,
@@ -198,27 +230,53 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
         installedVersion: existing?.version,
       );
 
+      cancellationToken?.throwIfCancelled();
       await stagingRoot.rename(versionRoot.path);
       final installed = OcrInstalledModelPackage(
         manifest: manifest,
         rootDirectory: versionRoot,
       );
+      cancellationToken?.throwIfCancelled();
       try {
         await _healthCheck(installed);
+      } on OcrModelPackageException {
+        rethrow;
       } catch (_) {
         throw const OcrModelPackageException(
           kind: OcrModelPackageErrorKind.healthCheckFailed,
           message: 'OCR model package health check failed.',
         );
       }
+      cancellationToken?.throwIfCancelled();
       await _writeActive(root, manifest.version);
-      return emit(
+      activated = true;
+      await _pruneInactiveVersionsBestEffort(
+        root,
+        activeVersion: manifest.version,
+      );
+      return await emit(
         OcrModelInstallState.installed,
         1,
         installedVersion: manifest.version,
       );
     } catch (error) {
       await _safeDelete(stagingRoot);
+      if (activated) {
+        final installedStatus = OcrModelPackageStatus(
+          packageId: manifest.packageId,
+          state: OcrModelInstallState.installed,
+          progress: 1,
+          installedVersion: manifest.version,
+        );
+        try {
+          await _writeStatus(root, installedStatus);
+        } catch (_) {
+          // Activation is the commit point. A status persistence failure must
+          // not delete or report a valid active package as a failed install.
+        }
+        return installedStatus;
+      }
+
       final shouldDeleteNewVersion = existing?.version != manifest.version;
       if (shouldDeleteNewVersion) await _safeDelete(versionRoot);
       final mapped = _toPackageException(error);
@@ -309,7 +367,9 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
     OcrModelFile file,
     Directory stagingRoot, {
     required Future<void> Function(int count) onBytes,
+    OcrModelInstallCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final uri = Uri.parse(file.downloadUrl);
     final response = await _downloadClient.open(uri);
     if (response.statusCode != 200) {
@@ -336,6 +396,7 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
     var bytesWritten = 0;
     try {
       await for (final chunk in response.bytes) {
+        cancellationToken?.throwIfCancelled();
         bytesWritten += chunk.length;
         if (bytesWritten > file.sizeBytes) {
           throw const OcrModelPackageException(
@@ -351,6 +412,7 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
       await writer.close();
       hashSink.close();
     }
+    cancellationToken?.throwIfCancelled();
     if (bytesWritten != file.sizeBytes) {
       throw const OcrModelPackageException(
         kind: OcrModelPackageErrorKind.sizeMismatch,
@@ -363,6 +425,70 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
         kind: OcrModelPackageErrorKind.checksumMismatch,
         message: 'OCR model file checksum does not match manifest.',
       );
+    }
+  }
+
+  Future<void> _ensureStorageCapacity(
+    Directory packageRoot,
+    int packageSizeBytes,
+  ) async {
+    final capacityProvider = _storageCapacityProvider;
+    if (capacityProvider == null) return;
+    final availableBytes = await capacityProvider(packageRoot);
+    if (availableBytes == null) return;
+    if (availableBytes < 0) {
+      throw const OcrModelPackageException(
+        kind: OcrModelPackageErrorKind.storageUnavailable,
+        message: 'OCR model storage capacity is unavailable.',
+      );
+    }
+    final requiredBytes = packageSizeBytes + minimumFreeSpaceReserveBytes;
+    if (availableBytes < requiredBytes) {
+      throw const OcrModelPackageException(
+        kind: OcrModelPackageErrorKind.insufficientStorage,
+        message: 'Not enough storage space for the OCR model package.',
+      );
+    }
+  }
+
+  Future<void> _pruneInactiveVersionsBestEffort(
+    Directory packageRoot, {
+    required String activeVersion,
+  }) async {
+    try {
+      await _pruneInactiveVersions(packageRoot, activeVersion: activeVersion);
+    } catch (_) {
+      // Version cleanup must never invalidate a successfully activated package.
+    }
+  }
+
+  Future<void> _pruneInactiveVersions(
+    Directory packageRoot, {
+    required String activeVersion,
+  }) async {
+    final versionsRoot = Directory(p.join(packageRoot.path, 'versions'));
+    if (!await versionsRoot.exists()) return;
+    final versions = <Directory>[];
+    await for (final entry in versionsRoot.list(followLinks: false)) {
+      if (entry is Directory && _isSemanticVersion(p.basename(entry.path))) {
+        versions.add(entry);
+      }
+    }
+    versions.sort((left, right) {
+      final leftVersion = p.basename(left.path);
+      final rightVersion = p.basename(right.path);
+      final comparison = _compareSemver(rightVersion, leftVersion);
+      return comparison != 0 ? comparison : rightVersion.compareTo(leftVersion);
+    });
+    var retainedInactive = 0;
+    for (final versionRoot in versions) {
+      final version = p.basename(versionRoot.path);
+      if (version == activeVersion) continue;
+      if (retainedInactive < retainedInactiveVersions) {
+        retainedInactive += 1;
+        continue;
+      }
+      await _safeDelete(versionRoot);
     }
   }
 
@@ -558,6 +684,20 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
     } catch (_) {
       // Cleanup best effort only. The next recovery pass will try again.
     }
+  }
+
+  static int _requireNonNegative(int value, String name) {
+    if (value < 0) {
+      throw ArgumentError.value(value, name, 'must not be negative');
+    }
+    return value;
+  }
+
+  static bool _isSemanticVersion(String value) {
+    return RegExp(
+      r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)'
+      r'(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$',
+    ).hasMatch(value);
   }
 
   static int _compareSemver(String left, String right) {

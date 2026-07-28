@@ -4,6 +4,7 @@ import '../../domain/importing/import_cancellation_token.dart';
 import '../../domain/importing/import_task.dart';
 import '../../domain/importing/import_task_repository.dart';
 import '../../domain/ocr/ocr_model_manifest.dart';
+import '../../domain/ocr/ocr_model_package.dart';
 import '../../domain/ocr/ocr_model_package_exception.dart';
 import '../../domain/recipe/recipe.dart';
 import '../access/app_access_use_cases.dart';
@@ -23,6 +24,8 @@ enum AiRecipeBackendErrorCode {
   invalidTaskState,
   providerRouteUnavailable,
   storageUnavailable,
+  insufficientStorage,
+  operationCancelled,
   operationFailed,
   componentNotInstalled,
   componentInstallationFailed,
@@ -84,10 +87,15 @@ class AiRecipeBackendFacade {
   Future<OcrModelPackageStatus> installLocalOcrModel(
     OcrModelManifest manifest, {
     void Function(OcrModelPackageStatus status)? onStatusChanged,
+    OcrModelInstallCancellationToken? cancellationToken,
   }) async {
     final useCases = _requireLocalOcrModelUseCases();
     try {
-      return await useCases.install(manifest, onStatusChanged: onStatusChanged);
+      return await useCases.install(
+        manifest,
+        onStatusChanged: onStatusChanged,
+        cancellationToken: cancellationToken,
+      );
     } on OcrModelPackageException catch (error) {
       throw _mapOcrModelPackageException(error);
     }
@@ -371,6 +379,12 @@ class AiRecipeBackendFacade {
         AiRecipeBackendErrorCode.componentIncompatible,
       OcrModelPackageErrorKind.invalidPackage =>
         AiRecipeBackendErrorCode.invalidInput,
+      OcrModelPackageErrorKind.insufficientStorage =>
+        AiRecipeBackendErrorCode.insufficientStorage,
+      OcrModelPackageErrorKind.cancelled =>
+        AiRecipeBackendErrorCode.operationCancelled,
+      OcrModelPackageErrorKind.storageUnavailable =>
+        AiRecipeBackendErrorCode.storageUnavailable,
       _ => AiRecipeBackendErrorCode.componentInstallationFailed,
     };
     return AiRecipeBackendException(code: code, message: error.message);

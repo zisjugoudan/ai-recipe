@@ -290,6 +290,77 @@ void main() {
       },
     );
 
+    test(
+      'passes the model installation cancellation token to the service',
+      () async {
+        final packageService = FakeOcrModelPackageService();
+        final harness = BackendHarness(
+          now: now,
+          authenticated: false,
+          localOcrModelPackageService: packageService,
+        );
+        addTearDown(harness.root.close);
+        final token = OcrModelInstallCancellationToken();
+
+        await harness.root.backend.installLocalOcrModel(
+          sampleOcrModelManifest(),
+          cancellationToken: token,
+        );
+
+        expect(packageService.lastCancellationToken, same(token));
+      },
+    );
+
+    test('maps insufficient storage to a stable facade code', () async {
+      final harness = BackendHarness(
+        now: now,
+        authenticated: false,
+        localOcrModelPackageService: FakeOcrModelPackageService(
+          installError: const OcrModelPackageException(
+            kind: OcrModelPackageErrorKind.insufficientStorage,
+            message: 'Not enough storage.',
+          ),
+        ),
+      );
+      addTearDown(harness.root.close);
+
+      await expectLater(
+        harness.root.backend.installLocalOcrModel(sampleOcrModelManifest()),
+        throwsA(
+          isA<AiRecipeBackendException>().having(
+            (error) => error.code,
+            'code',
+            AiRecipeBackendErrorCode.insufficientStorage,
+          ),
+        ),
+      );
+    });
+
+    test('maps explicit cancellation to a stable facade code', () async {
+      final harness = BackendHarness(
+        now: now,
+        authenticated: false,
+        localOcrModelPackageService: FakeOcrModelPackageService(
+          installError: const OcrModelPackageException(
+            kind: OcrModelPackageErrorKind.cancelled,
+            message: 'Installation cancelled.',
+          ),
+        ),
+      );
+      addTearDown(harness.root.close);
+
+      await expectLater(
+        harness.root.backend.installLocalOcrModel(sampleOcrModelManifest()),
+        throwsA(
+          isA<AiRecipeBackendException>().having(
+            (error) => error.code,
+            'code',
+            AiRecipeBackendErrorCode.operationCancelled,
+          ),
+        ),
+      );
+    });
+
     test('maps install failures to componentInstallationFailed', () async {
       final harness = BackendHarness(
         now: now,
@@ -565,6 +636,7 @@ class FakeOcrModelPackageService implements OcrModelPackageService {
   Object? installError;
   String? lastStatusPackageId;
   OcrModelManifest? lastInstalledManifest;
+  OcrModelInstallCancellationToken? lastCancellationToken;
   String? deletedPackageId;
   var recoverCount = 0;
 
@@ -584,8 +656,10 @@ class FakeOcrModelPackageService implements OcrModelPackageService {
   Future<OcrModelPackageStatus> install(
     OcrModelManifest manifest, {
     void Function(OcrModelPackageStatus status)? onStatusChanged,
+    OcrModelInstallCancellationToken? cancellationToken,
   }) async {
     lastInstalledManifest = manifest;
+    lastCancellationToken = cancellationToken;
     if (installError case final error?) throw error;
     onStatusChanged?.call(status);
     return status;

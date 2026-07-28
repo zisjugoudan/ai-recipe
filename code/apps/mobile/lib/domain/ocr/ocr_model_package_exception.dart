@@ -9,6 +9,7 @@ enum OcrModelPackageErrorKind {
   checksumMismatch,
   healthCheckFailed,
   storageUnavailable,
+  insufficientStorage,
   cancelled,
   unknown,
 }

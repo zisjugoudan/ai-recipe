@@ -218,6 +218,7 @@ class FakeOcrModelPackageService implements OcrModelPackageService {
   Future<OcrModelPackageStatus> install(
     OcrModelManifest manifest, {
     void Function(OcrModelPackageStatus status)? onStatusChanged,
+    OcrModelInstallCancellationToken? cancellationToken,
   }) {
     throw UnimplementedError();
   }

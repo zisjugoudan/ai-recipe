@@ -129,9 +129,13 @@ Manifest 是不可信输入，必须严格 Schema 校验。核心字段：
 
 - Manifest 来源域名和模型文件域名使用白名单。
 - 下载失败、哈希不符或健康检查失败时不激活，并保留上一可用版本。
-- 临时文件在失败或应用重启恢复时清理；同一服务实例内的同包安装、删除和恢复使用串行队列；显式安装取消与跨 isolate/进程互斥仍待实现。
+- 临时文件在失败、取消或应用重启恢复时清理；同一服务实例内的同包安装、删除和恢复使用串行队列；跨 isolate、多服务实例、跨进程和 OS 文件锁级别互斥仍待实现。
 - `active.json`、`state.json` 和安装后的 `manifest.json` 使用临时文件原子切换；Windows 目标覆盖失败时使用备份回退。
-- 升级失败保留上一 active 版本与 `installedVersion`；active 包读取必须校验 Manifest 包 ID 和版本与指针一致。
+- 升级失败或取消时保留上一 active 版本与 `installedVersion`；active 包读取必须校验 Manifest 包 ID 和版本与指针一致。
+- 安装取消通过 `OcrModelInstallCancellationToken` 显式触发；取消检查覆盖容量检查、下载 chunk、Manifest 写入、staging rename、health check 和 active 切换前。
+- 下载前空间预检按 Manifest 模型总大小 + 64 MiB 安全余量计算；容量未知时跳过预检，容量不可用或空间不足使用稳定错误。
+- 激活成功后默认保留 active + 1 个最新 inactive 版本；旧版本回收为 best-effort，不得让已激活版本失败。
+- `active.json` 写入成功是安装提交点；提交点后的状态写入或观察者回调异常不得删除已激活模型。
 - 模型包不得包含脚本、动态库或可执行文件。
 
 ## 9. 本地与云端边界
@@ -176,7 +180,8 @@ ai_recipe/local_ocr
 |---|---|---|---|
 | `probe` | 无 | `runtimeAvailable`、`recognitionSupported`、可选 `runtimeVersion` | Android 已实现 |
 | `healthCheck` | 模型目录与严格 Manifest | 成功返回空；失败返回稳定平台错误 | Android 已实现 |
-| `recognize` | 模型目录、Manifest 和图片输入 | `OcrDocument` JSON | Android 未实现 |
+| `recognize` | 模型目录、Manifest 和图片输入 | `OcrDocument` JSON | Android 未实现，固定返回 `inference_not_implemented` |
+| `getAvailableStorageBytes` | 模型包目录 | 可用字节数 | Android 已实现基础查询 |
 
 Dart 侧 `PlatformOcrRuntimeBridge` 负责：
 
@@ -207,19 +212,19 @@ com.microsoft.onnxruntime:onnxruntime-android:1.20.0
 
 ## 13. Application 与组合根
 
-- `LocalOcrModelUseCases` 暴露状态查询、安装、删除和中断恢复。
+- `LocalOcrModelUseCases` 暴露状态查询、安装、删除和中断恢复，安装入口可传入取消令牌。
 - `AiRecipeBackendFacade` 暴露模型管理入口，并将模型包异常映射为稳定后端错误。
-- 设备组合根装配下载客户端、`DeviceOcrModelPackageService`、`PlatformOcrRuntimeBridge` 和 `PlatformOcrProvider`。
-- 本地 OCR Provider 只有在 active 模型存在且 `recognitionSupported == true` 时才可进入导入执行计划。
+- 设备组合根装配下载客户端、`DeviceOcrModelPackageService`、`PlatformOcrRuntimeBridge`、`PlatformOcrStorageCapacityProvider` 和 `PlatformOcrProvider`。
+- 本地 OCR Provider 只有在 active 模型存在且原生探测明确报告支持真实识别时才可进入导入执行计划。
 
 ## 14. 自动化验证
 
 2026-07-28 从 Windows ASCII Junction `C:\tmp\ai-recipe-mobile` 执行：
 
 ```text
-dart --suppress-analytics format lib test：116 个文件，0 个变化
+dart --suppress-analytics format lib test：118 个文件，0 个变化
 flutter --suppress-analytics analyze --no-pub：No issues found
-flutter --suppress-analytics test --no-pub：244 项全部通过
+flutter --suppress-analytics test --no-pub：259 项全部通过
 flutter --suppress-analytics build apk --debug：成功
 ```
 
@@ -232,6 +237,10 @@ flutter --suppress-analytics build apk --debug：成功
 - active Manifest 包 ID 或版本不一致时拒绝返回可用包。
 - MethodChannel 参数、响应解析、稳定错误和 `PlatformOcrProvider` 行为。
 - Facade 模型管理错误映射与设备组合根能力探测。
+- 安装显式取消、下载 chunk 取消检查、staging 清理、升级取消保留上一 active。
+- Android 空间预检、容量未知时继续安装、容量不可用/空间不足稳定错误映射。
+- 默认 active + 1 inactive 回收、`retainedInactiveVersions: 0` 回收策略和配置参数校验。
+- 激活提交点保护：最终状态写入或回调失败不删除已激活包。
 
 ### 未验收
 
@@ -239,6 +248,8 @@ flutter --suppress-analytics build apk --debug：成功
 - 真实 PP-OCRv5 mobile 模型、转换参数、词典与许可证证据。
 - Android 真机体积、加载耗时、1080p 单图耗时、峰值内存和准确率。
 - iOS Runtime、构建和真机验证。
-- 跨 isolate/进程同包互斥、显式取消、磁盘空间预检、旧版本回收和 Manifest 签名/可信发布机制。
+- 跨 isolate、多服务实例、跨进程和 OS 文件锁级别同包互斥。
+- iOS Runtime、iOS 容量查询、iOS 安装取消和 iOS 旧版本回收验证。
+- Manifest 签名、固定公钥、可信索引或其他可信发布机制。
 
 阶段验收记录：`tests/acceptance/SPK-002-local-ocr-runtime-slice-2026-07-28.md`。`SPK-002` 继续保持 `DOING`。

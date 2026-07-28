@@ -1,4 +1,4 @@
-# AI 食谱应用
+﻿# AI 食谱应用
 
 移动端优先、跨平台、本地优先的 AI 食谱管理应用。支持从小红书、抖音等来源导入内容，通过可替换的 OCR、ASR 与 LLM Provider 生成结构化菜谱。
 
@@ -47,4 +47,6 @@
 
 ## 当前阶段
 
-项目执行体系与本地 Git 仓库已初始化，Flutter、OCR 和 LLM Provider 方向已经确定。`SPK-001` 已启动，正在创建最小 Flutter 工程并验证自定义 API Provider，具体状态以 `tracking/CURRENT.md` 为准。
+后端核心契约与 Application 主链路已形成稳定基线，UI 继续暂缓。当前主线是 `SPK-002` 本地 OCR 原生能力验证；Android 模型包 Runtime 与安装可靠性基础切片已通过，真实 OCR 推理、真机指标、iOS 和跨进程互斥仍待完成。
+
+具体状态以 [tracking/CURRENT.md](tracking/CURRENT.md) 为准。

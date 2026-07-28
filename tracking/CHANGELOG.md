@@ -1,15 +1,19 @@
 ﻿## 2026-07-28
 
-### SPK-002 本地 OCR 模型 Runtime 阶段切片
+### SPK-002 本地 OCR 模型 Runtime 与安装可靠性阶段切片
 
 - 新增本地 OCR 模型包服务，支持下载、扩展名限制、大小与 SHA-256 校验、安装、健康检查后激活、删除、失败回滚和中断恢复。
-- 同一服务实例内按模型包串行执行安装、删除和恢复；相同版本并发安装复用已激活结果，失败操作不会阻塞后续队列。
+- 同一服务实例内按模型包串行执行安装、删除和恢复；相同版本并发安装复用已激活结果，失败操作不会阻塞后续队列；跨 isolate、多服务实例、跨进程和 OS 文件锁仍待设计。
 - `active.json`、`state.json` 和 `manifest.json` 使用临时文件原子切换；Windows 覆盖失败时可通过备份恢复，升级失败保留上一 active 与 `installedVersion`。
+- 新增 `OcrModelInstallCancellationToken`，安装前、容量检查、下载 chunk、Manifest 写入、staging rename、health check 和 active 切换前都会检查取消；取消后清理 staging，保留上一 active，并写入 `failureCode = cancelled`。
+- 新增 Android `getAvailableStorageBytes` 和 Dart `PlatformOcrStorageCapacityProvider`；下载前按 Manifest 模型总大小 + 64 MiB 安全余量预检，容量未知时跳过，空间不足映射为稳定 `insufficientStorage`。
+- 新增默认 active + 1 inactive 的旧版本回收策略；回收异常为 best-effort，不能让已经激活的新版本失败。
+- 修复激活提交点边界：`active.json` 写入成功后，后续状态持久化或观察者回调异常不得删除已激活模型。
 - Flutter 新增 `ai_recipe/local_ocr` MethodChannel 契约，包含 `probe`、`healthCheck`、`recognize`，并完成响应校验和稳定错误映射。
-- Android 集成 ONNX Runtime `1.20.0`，健康检查会创建 ONNX Session 并验证输入输出；`recognize` 仍固定返回 `inference_not_implemented`。
+- Android 集成 ONNX Runtime `1.20.0`，健康检查会创建 ONNX Session 并验证输入输出；`recognize` 仍固定返回 `inference_not_implemented`，`recognitionSupported` 仍为 `false`。
 - 新增 `PlatformOcrProvider`、本地模型 Application Use Cases、Backend Facade 管理入口和设备组合根装配。
-- `dart format lib test` 无变化，`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 244 项通过，Android Debug APK 构建成功。
-- `recognitionSupported` 仍为 `false`；真实 PP-OCRv5 推理、Android 真机性能/准确率和 iOS 路径尚未完成，因此 `SPK-002` 保持 `DOING`。
+- `dart format lib test` 共 118 个文件、0 个变化；`flutter analyze --no-pub` 无问题；`flutter test --no-pub` 共 259 项通过；Android Debug APK 构建成功。
+- 真实 PP-OCRv5 推理、Android 真机性能/准确率、iOS 路径、Manifest 签名/可信发布链尚未完成，因此 `SPK-002` 保持 `DOING`。
 ## 2026-07-28
 
 ### APP-003 应用后端组合根与统一门面

@@ -27,6 +27,7 @@ import '../providers/llm/llm_provider_factory.dart';
 import '../providers/ocr/http_ocr_model_download_client.dart';
 import '../providers/ocr/platform_ocr_provider.dart';
 import '../providers/ocr/platform_ocr_runtime_bridge.dart';
+import '../providers/ocr/platform_ocr_storage_capacity_provider.dart';
 
 class AiRecipeBackendCompositionRoot {
   AiRecipeBackendCompositionRoot._({
@@ -52,6 +53,7 @@ class AiRecipeBackendCompositionRoot {
     OcrModelPackageService? localOcrModelPackageService,
     OcrRuntimeBridge? localOcrRuntimeBridge,
     OcrModelDownloadClient? ocrModelDownloadClient,
+    OcrModelStorageCapacityProvider? ocrModelStorageCapacityProvider,
     OcrRuntimePlatform? currentOcrPlatform,
     Set<String> trustedOcrModelHosts = const <String>{},
     String localOcrPackageId = 'paddleocr-ppocrv5-mobile-zh',
@@ -99,6 +101,9 @@ class AiRecipeBackendCompositionRoot {
           currentPlatform: currentOcrPlatform ?? _currentOcrRuntimePlatform(),
           appVersion: appVersion,
           healthCheck: resolvedLocalOcrRuntimeBridge.healthCheck,
+          storageCapacityProvider:
+              ocrModelStorageCapacityProvider ??
+              PlatformOcrStorageCapacityProvider().availableBytes,
         );
     final resolvedLocalOcrBuilder =
         localOcrBuilder ??
