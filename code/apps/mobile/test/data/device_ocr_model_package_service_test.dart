@@ -66,6 +66,146 @@ void main() {
     expect(active!.version, '1.0.0');
   });
 
+  test('serializes concurrent installs for the same model package', () async {
+    final bytes = utf8.encode('fake onnx model');
+    downloads.add('https://models.example.test/det.onnx', bytes);
+    final healthCheckStarted = Completer<void>();
+    final releaseHealthCheck = Completer<void>();
+    final service = newService(
+      root,
+      downloads,
+      healthCheck: (_) async {
+        if (!healthCheckStarted.isCompleted) healthCheckStarted.complete();
+        await releaseHealthCheck.future;
+      },
+    );
+    final modelManifest = manifest(version: '1.0.0', bytes: bytes);
+
+    final first = service.install(modelManifest);
+    await healthCheckStarted.future;
+    final second = service.install(modelManifest);
+    releaseHealthCheck.complete();
+
+    final results = await Future.wait(<Future<OcrModelPackageStatus>>[
+      first,
+      second,
+    ]);
+    expect(
+      results.map((status) => status.state),
+      everyElement(OcrModelInstallState.installed),
+    );
+    expect(downloads.openedUrls, hasLength(1));
+  });
+
+  test('continues queued installs after an earlier install fails', () async {
+    final bytes = utf8.encode('fake onnx model');
+    downloads.add('https://models.example.test/det.onnx', bytes);
+    final firstHealthCheckStarted = Completer<void>();
+    final releaseFirstHealthCheck = Completer<void>();
+    var healthCheckCalls = 0;
+    final service = newService(
+      root,
+      downloads,
+      healthCheck: (_) async {
+        healthCheckCalls += 1;
+        if (healthCheckCalls == 1) {
+          firstHealthCheckStarted.complete();
+          await releaseFirstHealthCheck.future;
+          throw StateError('first health check failed');
+        }
+      },
+    );
+    final modelManifest = manifest(version: '1.0.0', bytes: bytes);
+
+    final first = service.install(modelManifest);
+    await firstHealthCheckStarted.future;
+    final second = service.install(modelManifest);
+    releaseFirstHealthCheck.complete();
+
+    await expectLater(
+      first,
+      throwsA(
+        isA<OcrModelPackageException>().having(
+          (error) => error.kind,
+          'kind',
+          OcrModelPackageErrorKind.healthCheckFailed,
+        ),
+      ),
+    );
+    final result = await second;
+
+    expect(result.state, OcrModelInstallState.installed);
+    expect(healthCheckCalls, 2);
+    expect(downloads.openedUrls, hasLength(2));
+  });
+
+  test('delete waits for an in-flight install of the same package', () async {
+    final bytes = utf8.encode('fake onnx model');
+    downloads.add('https://models.example.test/det.onnx', bytes);
+    final healthCheckStarted = Completer<void>();
+    final releaseHealthCheck = Completer<void>();
+    final service = newService(
+      root,
+      downloads,
+      healthCheck: (_) async {
+        healthCheckStarted.complete();
+        await releaseHealthCheck.future;
+      },
+    );
+
+    final installation = service.install(
+      manifest(version: '1.0.0', bytes: bytes),
+    );
+    await healthCheckStarted.future;
+    var deleteCompleted = false;
+    final deletion = service
+        .delete('paddleocr-ppocrv5-mobile-zh')
+        .whenComplete(() => deleteCompleted = true);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(deleteCompleted, isFalse);
+    releaseHealthCheck.complete();
+    await installation;
+    await deletion;
+    expect(
+      await service.getActivePackage('paddleocr-ppocrv5-mobile-zh'),
+      isNull,
+    );
+  });
+
+  test('recovery waits for an in-flight install of the same package', () async {
+    final bytes = utf8.encode('fake onnx model');
+    downloads.add('https://models.example.test/det.onnx', bytes);
+    final healthCheckStarted = Completer<void>();
+    final releaseHealthCheck = Completer<void>();
+    final service = newService(
+      root,
+      downloads,
+      healthCheck: (_) async {
+        healthCheckStarted.complete();
+        await releaseHealthCheck.future;
+      },
+    );
+
+    final installation = service.install(
+      manifest(version: '1.0.0', bytes: bytes),
+    );
+    await healthCheckStarted.future;
+    var recoveryCompleted = false;
+    final recovery = service.recoverInterruptedInstallations().whenComplete(
+      () => recoveryCompleted = true,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(recoveryCompleted, isFalse);
+    releaseHealthCheck.complete();
+    await installation;
+    await recovery;
+    final status = await service.getStatus('paddleocr-ppocrv5-mobile-zh');
+    expect(status.state, OcrModelInstallState.installed);
+    expect(status.installedVersion, '1.0.0');
+  });
+
   test('rejects untrusted download hosts before downloading', () async {
     final bytes = utf8.encode('fake onnx model');
     final service = newService(

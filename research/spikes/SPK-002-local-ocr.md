@@ -29,12 +29,13 @@ PaddleOCR PP-OCRv5 mobile 经 ONNX Runtime Mobile 封装后，能否在 iOS 和 
 ### 已完成
 
 - 新增 `DeviceOcrModelPackageService`，支持下载、文件类型限制、大小与 SHA-256 校验、版本安装、健康检查后激活、删除、失败回滚和中断恢复。
+- 同一服务实例内按包 ID 串行执行安装、删除和恢复；相同版本并发安装只下载一次，失败操作不会毒化后续队列。
 - `active.json`、`state.json` 和 `manifest.json` 使用临时文件原子切换；Windows 目标覆盖失败时先备份旧文件，新文件切换失败会恢复备份。
 - 升级期间和失败状态保留上一 `installedVersion`；读取 active 包时校验 Manifest 包 ID与版本和指针一致。
 - Flutter 原生桥接通道固定为 `ai_recipe/local_ocr`，契约包含 `probe`、`healthCheck`、`recognize`。
 - Android 集成 `com.microsoft.onnxruntime:onnxruntime-android:1.20.0`；`healthCheck` 会逐个创建 ONNX Runtime Session 并检查输入输出存在。
 - 新增 `PlatformOcrProvider`、`LocalOcrModelUseCases`、Backend Facade 模型管理入口和设备组合根绑定。
-- 自动化验证通过：格式化无变化、静态分析无问题、237 项 Flutter 测试全部通过、Android Debug APK 构建成功。
+- 自动化验证通过：格式化无变化、静态分析无问题、244 项 Flutter 测试全部通过、Android Debug APK 构建成功。
 
 ### 尚未完成
 
@@ -44,7 +45,7 @@ PaddleOCR PP-OCRv5 mobile 经 ONNX Runtime Mobile 封装后，能否在 iOS 和 
 - 未实现图片解码、缩放归一化、检测、方向处理、识别、词典解码、阅读顺序和置信度后处理。
 - 未取得 Android 真机模型体积、加载耗时、单图耗时、峰值内存和准确率结论。
 - iOS 未实现、未构建、未真机验证。
-- 同包并发安装锁、显式取消、磁盘空间预检、旧版本保留/回收和 Manifest 签名/可信发布机制尚未完成。
+- 跨 isolate/进程的同包互斥、显式取消、磁盘空间预检、旧版本保留/回收和 Manifest 签名/可信发布机制尚未完成。
 
 ## 必测样本
 

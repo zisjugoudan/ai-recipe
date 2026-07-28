@@ -27,7 +27,7 @@ OCR 只负责识别图片文字，不直接创建 Recipe，也不猜测食材、
 - 支持本地插件和云 API 共用输出，不把供应商类型泄漏给 UI。
 - 扩展文本片段的可选 OCR 证据字段：`confidence`、`sourceMediaOrder`、`sourceProvider`。
 - 覆盖跳过、空结果、部分结果、取消、错误映射和 Runner 进度集成测试。
-- `SPK-002` 阶段扩展模型包下载/校验/激活/删除/恢复、Flutter MethodChannel、Android ONNX Runtime Session 健康检查和后端组合根接线。
+- `SPK-002` 阶段扩展模型包下载/校验/激活/删除/恢复、同包进程内串行队列、Flutter MethodChannel、Android ONNX Runtime Session 健康检查和后端组合根接线。
 
 ## 3. 非目标
 
@@ -129,7 +129,7 @@ Manifest 是不可信输入，必须严格 Schema 校验。核心字段：
 
 - Manifest 来源域名和模型文件域名使用白名单。
 - 下载失败、哈希不符或健康检查失败时不激活，并保留上一可用版本。
-- 临时文件在失败或应用重启恢复时清理；显式安装取消仍待实现。
+- 临时文件在失败或应用重启恢复时清理；同一服务实例内的同包安装、删除和恢复使用串行队列；显式安装取消与跨 isolate/进程互斥仍待实现。
 - `active.json`、`state.json` 和安装后的 `manifest.json` 使用临时文件原子切换；Windows 目标覆盖失败时使用备份回退。
 - 升级失败保留上一 active 版本与 `installedVersion`；active 包读取必须校验 Manifest 包 ID 和版本与指针一致。
 - 模型包不得包含脚本、动态库或可执行文件。
@@ -217,15 +217,16 @@ com.microsoft.onnxruntime:onnxruntime-android:1.20.0
 2026-07-28 从 Windows ASCII Junction `C:\tmp\ai-recipe-mobile` 执行：
 
 ```text
-dart --suppress-analytics format lib test：115 个文件，0 个变化
+dart --suppress-analytics format lib test：116 个文件，0 个变化
 flutter --suppress-analytics analyze --no-pub：No issues found
-flutter --suppress-analytics test --no-pub：237 项全部通过
+flutter --suppress-analytics test --no-pub：244 项全部通过
 flutter --suppress-analytics build apk --debug：成功
 ```
 
 新增测试覆盖：
 
 - 模型包 Manifest、下载、哈希、安装、激活、删除、失败回滚和恢复。
+- 同包并发安装只下载一次，失败后的后续安装可继续，删除和恢复会等待同包安装结束。
 - 升级失败时保留上一 active 和 `installedVersion`。
 - 成功升级后清理 `.tmp-*` 与 `.bak-*`。
 - active Manifest 包 ID 或版本不一致时拒绝返回可用包。
@@ -238,6 +239,6 @@ flutter --suppress-analytics build apk --debug：成功
 - 真实 PP-OCRv5 mobile 模型、转换参数、词典与许可证证据。
 - Android 真机体积、加载耗时、1080p 单图耗时、峰值内存和准确率。
 - iOS Runtime、构建和真机验证。
-- 同包并发安装、显式取消、磁盘空间预检、旧版本回收和 Manifest 签名/可信发布机制。
+- 跨 isolate/进程同包互斥、显式取消、磁盘空间预检、旧版本回收和 Manifest 签名/可信发布机制。
 
 阶段验收记录：`tests/acceptance/SPK-002-local-ocr-runtime-slice-2026-07-28.md`。`SPK-002` 继续保持 `DOING`。

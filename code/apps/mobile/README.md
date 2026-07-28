@@ -23,9 +23,9 @@
 - IMPORT-003 公开内容 HTTP Transport、小红书/抖音公共元数据 Adapter、HTML/JSON-LD 解析和人工粘贴/本地媒体降级。
 - AI-002 受限 Prompt、严格结构化菜谱 Schema、草稿持久化、错误映射和保存提交点。
 - OCR-001 统一 OCR Provider、严格模型 Manifest、OCR 证据字段和导入预处理流水线。
-- SPK-002 阶段切片：本地 OCR 模型包下载/校验/安装/激活/删除/恢复，`ai_recipe/local_ocr` MethodChannel，Android ONNX Runtime Session 健康检查，以及 Application/Facade/组合根接线。
+- SPK-002 阶段切片：本地 OCR 模型包下载/校验/安装/激活/删除/恢复、同包进程内串行队列，`ai_recipe/local_ocr` MethodChannel，Android ONNX Runtime Session 健康检查，以及 Application/Facade/组合根接线。
 - ASR-001 统一 ASR Provider、分段时间证据、音视频限制、部分结果和导入预处理流水线。
-- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 237 项测试通过。
+- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 244 项测试通过。
 
 ## 本地运行
 

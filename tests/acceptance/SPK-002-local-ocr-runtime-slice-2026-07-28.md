@@ -10,7 +10,7 @@
 本记录只验收无需 UI 的本地 OCR 基础设施切片：
 
 1. 模型包下载、文件限制、大小与 SHA-256 校验。
-2. 版本安装、健康检查后激活、删除、失败回滚和中断恢复。
+2. 版本安装、健康检查后激活、删除、失败回滚、中断恢复和同包进程内串行化。
 3. Flutter MethodChannel 请求/响应和稳定错误契约。
 4. Android ONNX Runtime 可加载性与 ONNX Session 健康检查。
 5. Application Use Cases、Backend Facade 和设备组合根接线。
@@ -29,6 +29,7 @@
 - active 包读取会验证 `active.json`、目录、Manifest 包 ID 和 Manifest 版本一致性。
 - `active.json`、`state.json`、`manifest.json` 使用临时文件切换；Windows 覆盖失败时使用备份恢复。
 - 中断恢复清理安装临时目录，并优先保留状态或 active 版本。
+- 同一服务实例内，同包安装、删除和恢复按调用顺序串行执行；相同版本并发安装只下载一次，前一安装失败不会阻塞后续安装。
 - 成功升级后不会遗留 `.tmp-*` 或 `.bak-*` 文件。
 
 ### 2.2 Flutter 原生桥接
@@ -91,11 +92,11 @@ flutter --suppress-analytics build apk --debug
 
 结果：
 
-- `dart format`：115 个文件，0 个变化。
+- `dart format`：116 个文件，0 个变化。
 - `flutter analyze --no-pub`：`No issues found!`
-- `flutter test --no-pub`：237 项全部通过。
+- `flutter test --no-pub`：244 项全部通过。
 - Android Debug APK：成功生成 `build/app/outputs/flutter-apk/app-debug.apk`。
-- 模型包服务定向测试：7 项通过，覆盖升级失败保留 active/installedVersion、成功升级清理临时文件、Manifest 包 ID 不一致拒绝等路径。
+- 模型包服务定向测试：13 项通过，覆盖同包并发安装复用、失败后续跑、删除/恢复等待、升级失败保留 active/installedVersion、成功升级清理临时文件、Manifest 包 ID 不一致拒绝等路径。
 
 ## 4. 明确未验收
 
@@ -105,7 +106,7 @@ flutter --suppress-analytics build apk --debug
 - 未实现图片预处理、文本检测、方向处理、文字识别和词典解码。
 - 未取得 Android 真机模型体积、首次加载、1080p 单图耗时、峰值内存、中文准确率和阅读顺序结论。
 - iOS 未实现、未构建、未真机验证。
-- 同包并发安装锁、显式取消、磁盘空间预检和旧版本回收未实现。
+- 跨 isolate/进程同包互斥、显式取消、磁盘空间预检和旧版本回收未实现。
 - Manifest 尚无签名或完整可信发布机制。
 - 本次只证明 Android APK 能构建，不等于 ONNX 模型已在 Android 真机上完成真实推理。
 

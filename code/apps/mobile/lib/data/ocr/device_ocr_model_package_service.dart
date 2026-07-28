@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -41,6 +42,7 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
   final OcrModelPackageHealthCheck _healthCheck;
   final OcrModelStorageRootProvider _storageRootProvider;
   final Set<String> _allowedFileExtensions;
+  final Map<String, Future<void>> _operationTails = <String, Future<void>>{};
 
   @override
   Future<OcrModelPackageStatus> getStatus(String packageId) async {
@@ -107,6 +109,16 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
     void Function(OcrModelPackageStatus status)? onStatusChanged,
   }) async {
     _validateManifest(manifest);
+    return _runExclusive(
+      manifest.packageId,
+      () => _installUnlocked(manifest, onStatusChanged: onStatusChanged),
+    );
+  }
+
+  Future<OcrModelPackageStatus> _installUnlocked(
+    OcrModelManifest manifest, {
+    void Function(OcrModelPackageStatus status)? onStatusChanged,
+  }) async {
     final root = await _packageRoot(manifest.packageId);
     final existing = await getActivePackage(manifest.packageId);
     if (existing?.version == manifest.version) {
@@ -221,9 +233,11 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
   }
 
   @override
-  Future<void> delete(String packageId) async {
+  Future<void> delete(String packageId) {
     final normalizedId = _normalizePackageId(packageId);
-    await _safeDelete(await _packageRoot(normalizedId));
+    return _runExclusive(normalizedId, () async {
+      await _safeDelete(await _packageRoot(normalizedId));
+    });
   }
 
   @override
@@ -232,27 +246,61 @@ class DeviceOcrModelPackageService implements OcrModelPackageService {
     if (!await root.exists()) return;
     await for (final entry in root.list(followLinks: false)) {
       if (entry is! Directory) continue;
-      final staging = Directory(p.join(entry.path, '.staging'));
-      await _safeDelete(staging);
       final packageId = p.basename(entry.path);
-      final status = await _readStatus(entry, expectedPackageId: packageId);
-      if (status == null || status.state == OcrModelInstallState.installed) {
-        continue;
+      await _runExclusive(
+        packageId,
+        () => _recoverInterruptedInstallation(entry, packageId),
+      );
+    }
+  }
+
+  Future<void> _recoverInterruptedInstallation(
+    Directory packageRoot,
+    String packageId,
+  ) async {
+    await _safeDelete(Directory(p.join(packageRoot.path, '.staging')));
+    final status = await _readStatus(packageRoot, expectedPackageId: packageId);
+    if (status == null || status.state == OcrModelInstallState.installed) {
+      return;
+    }
+    if (status.state == OcrModelInstallState.downloading ||
+        status.state == OcrModelInstallState.verifying) {
+      await _writeStatus(
+        packageRoot,
+        OcrModelPackageStatus(
+          packageId: status.packageId,
+          state: OcrModelInstallState.failed,
+          progress: 0,
+          installedVersion:
+              status.installedVersion ??
+              (await getActivePackage(status.packageId))?.version,
+          failureCode: OcrModelPackageErrorKind.cancelled.name,
+        ),
+      );
+    }
+  }
+
+  Future<T> _runExclusive<T>(
+    String packageId,
+    Future<T> Function() action,
+  ) async {
+    final previous = _operationTails[packageId];
+    final gate = Completer<void>();
+    final tail = gate.future;
+    _operationTails[packageId] = tail;
+    if (previous != null) {
+      try {
+        await previous;
+      } catch (_) {
+        // A previous operation must not poison the package queue.
       }
-      if (status.state == OcrModelInstallState.downloading ||
-          status.state == OcrModelInstallState.verifying) {
-        await _writeStatus(
-          entry,
-          OcrModelPackageStatus(
-            packageId: status.packageId,
-            state: OcrModelInstallState.failed,
-            progress: 0,
-            installedVersion:
-                status.installedVersion ??
-                (await getActivePackage(status.packageId))?.version,
-            failureCode: OcrModelPackageErrorKind.cancelled.name,
-          ),
-        );
+    }
+    try {
+      return await action();
+    } finally {
+      gate.complete();
+      if (identical(_operationTails[packageId], tail)) {
+        _operationTails.remove(packageId);
       }
     }
   }
