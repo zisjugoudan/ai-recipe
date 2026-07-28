@@ -4,6 +4,27 @@
 
 ## 2026-07-28
 
+### OCR-001 OCR Provider 与导入预处理
+
+- 新增统一 `OcrProvider`、`OcrDocument`、`OcrTextBlock` 和稳定错误契约。
+- 新增严格模型 Manifest 与模型安装状态。
+- `ImportTextFragment` 新增 `confidence`、`sourceMediaOrder`、`sourceProvider`。
+- 新增 OCR 预处理 Decorator，支持跳过、媒体排序、限制、部分结果、去重、取消和错误映射。
+- Runner 已验证 `extracting → ocr → generating → review`。
+- `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 141 项测试通过。
+- `OCR-001` 进入 `DONE`；Android/iOS 原生桥接和模型下载保留给 `SPK-002`。
+
+### AI-002 结构化菜谱生成 Processor
+
+- 新增受限 Prompt，将页面内容视为不可信数据并限制为 40,000 字符。
+- 新增纯 JSON / 单 fenced JSON 提取和严格结构化菜谱 Schema 校验。
+- 菜谱、食材、步骤 ID、排序、状态、时间戳和版本全部由本地生成，结果只保存为 `RecipeStatus.draft`。
+- 标题不再代替 OCR/ASR 正文；标题-only 且需要媒体识别时不调用 LLM，避免幻觉生成。
+- 明确 Repository 保存成功后的提交点语义，解决已保存草稿被任务取消后失去引用的竞态。
+- 新增真实 SQLite 文件关闭/重开持久化测试，Recipe、Ingredient 和 Step 均可恢复读取。
+- `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 113 项测试通过。
+- `AI-002` 验收完成并进入 `DONE`；下一主任务切换为 `OCR-001`。
+
 ### IMPORT-003 公开内容获取与人工降级
 
 - 新增可注入的受限 HTTP Transport，覆盖超时、取消、有限重定向、平台主机白名单、HTTPS 降级拒绝、响应体上限和 Content-Type 白名单。

@@ -133,7 +133,8 @@ class ImportTaskRunner {
           }
         },
       );
-      cancellationToken?.throwIfCancelled();
+      // Returning a draft is the processor commit point. Cancellation is no
+      // longer observed here so a persisted draft cannot become orphaned.
 
       if (current.stage != ImportTaskStage.generating ||
           current.progress < 0.9) {

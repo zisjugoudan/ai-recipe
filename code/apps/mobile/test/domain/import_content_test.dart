@@ -1,4 +1,4 @@
-﻿import 'package:ai_recipe/domain/importing/import_content.dart';
+import 'package:ai_recipe/domain/importing/import_content.dart';
 import 'package:ai_recipe/domain/importing/import_content_adapter.dart';
 import 'package:ai_recipe/domain/importing/import_task.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -86,6 +86,54 @@ void main() {
     );
   });
 
+  test('text fragments preserve optional OCR evidence and validate ranges', () {
+    final fragment = ImportTextFragment(
+      kind: ImportTextFragmentKind.body,
+      text: ' OCR text ',
+      order: 3,
+      confidence: 0.75,
+      sourceMediaOrder: 2,
+      sourceProvider: ' paddleocr-local ',
+    );
+
+    expect(fragment.text, 'OCR text');
+    expect(fragment.sourceProvider, 'paddleocr-local');
+    expect(fragment.toJson(), <String, Object?>{
+      'kind': 'body',
+      'text': 'OCR text',
+      'order': 3,
+      'confidence': 0.75,
+      'sourceMediaOrder': 2,
+      'sourceProvider': 'paddleocr-local',
+    });
+    expect(
+      ImportTextFragment(
+        kind: ImportTextFragmentKind.body,
+        text: 'text',
+        order: 0,
+        sourceProvider: '   ',
+      ).sourceProvider,
+      isNull,
+    );
+    expect(
+      () => ImportTextFragment(
+        kind: ImportTextFragmentKind.body,
+        text: 'text',
+        order: 0,
+        confidence: 1.1,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => ImportTextFragment(
+        kind: ImportTextFragmentKind.body,
+        text: 'text',
+        order: 0,
+        sourceMediaOrder: -1,
+      ),
+      throwsArgumentError,
+    );
+  });
   test(
     'adapter registry selects by platform and exposes supported platforms',
     () {

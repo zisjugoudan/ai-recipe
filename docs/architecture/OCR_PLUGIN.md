@@ -1,115 +1,175 @@
-# OCR Provider 与本地插件方案
+﻿# OCR Provider 与可下载模型插件架构
 
-- 状态：首选方案已确定，性能与真机兼容性待 `SPK-002` 验证
-- 日期：2026-07-27
-- 关联决策：`ADR-0009`
-- 关联任务：`SPK-002`、`OCR-001`
+> 任务：`OCR-001`
+> 状态：已完成
+> 本地首选：PaddleOCR PP-OCRv5 mobile + ONNX Runtime Mobile
+> 真机验证：`SPK-002`
 
-## 1. 首选推荐
+## 1. 目标
 
-首版本地 OCR 推荐采用：
-
-> **PaddleOCR PP-OCRv5 mobile 模型 + ONNX Runtime Mobile + 自定义 Flutter federated plugin**
-
-原因：PaddleOCR 更贴合中文、长文本、食材表和复杂截图；PP-OCRv5 提供端侧 mobile 模型；ONNX Runtime Mobile 同时支持 Android/iOS；模型可作为独立资源包按需下载、校验、升级、删除和回滚；PaddleOCR 采用 Apache-2.0 许可。
-
-这是架构选择，不等于性能验证完成。若 `SPK-002` 证明 iOS 落地成本、低端机内存或包体不可接受，MVP 降级候选为系统/ML Kit OCR，但页面层不能写死降级引擎。
-
-## 2. Provider 架构
-
-```mermaid
-flowchart LR
-    USECASE["Import Use Case"] --> API["OcrProvider"]
-    API --> LOCAL["LocalOcrProvider"]
-    API --> CLOUD["CloudOcrProvider"]
-    LOCAL --> PLUGIN["Flutter Federated Plugin"]
-    PLUGIN --> ANDROID["Android ONNX Runtime"]
-    PLUGIN --> IOS["iOS ONNX Runtime"]
-    LOCAL --> MODELS["Model Package Manager"]
-```
-
-建议 Dart 接口：
-
-```dart
-abstract interface class OcrProvider {
-  String get id;
-  Future<OcrResult> recognize(OcrRequest request);
-  Future<OcrHealth> healthCheck();
-  Future<void> cancel(String requestId);
-}
-```
-
-统一结果至少包含完整文本、有序文本块、边界框、置信度、语言提示、引擎/模型/版本/耗时、输入资源 ID 和标准错误码。
-
-## 3. 本地插件结构
+让本地 OCR 插件和云端 OCR Adapter 使用同一个领域契约，并以预处理方式接入导入流水线：
 
 ```text
-local_ocr/
-├── local_ocr/                         Dart 公共 API
-├── local_ocr_platform_interface/      平台接口与 Mock
-├── local_ocr_android/                 Android ONNX Runtime 实现
-└── local_ocr_ios/                     iOS ONNX Runtime 实现
+ImportContent.media(image)
+→ OcrProvider
+→ OcrDocument / OcrTextBlock
+→ ImportTextFragment（含置信度和媒体来源序号）
+→ 新 ImportContent
+→ LlmRecipeGenerationProcessor
 ```
 
-禁止业务页面直接调用 MethodChannel；平台通道只存在于插件实现层。
+OCR 只负责识别图片文字，不直接创建 Recipe，也不猜测食材、用量和步骤关系。
 
-## 4. 模型包与下载机制
+## 2. 本轮范围
 
-模型不默认打进主安装包。每个模型包使用 Manifest 描述：
+- 定义 `OcrProvider`、图片输入、识别文档、文本块和稳定错误。
+- 定义 PaddleOCR 模型包 Manifest、文件哈希、版本、平台和安装状态。
+- 定义 OCR 导入预处理器，将识别结果补入统一 `ImportContent.textFragments`。
+- 支持本地插件和云 API 共用输出，不把供应商类型泄漏给 UI。
+- 扩展文本片段的可选 OCR 证据字段：`confidence`、`sourceMediaOrder`、`sourceProvider`。
+- 覆盖跳过、空结果、部分结果、取消、错误映射和 Runner 进度集成测试。
+
+## 3. 非目标
+
+- 本轮不集成 Android/iOS ONNX Runtime，不下载真实模型，不承诺性能或准确率。
+- 本轮不实现具体云 OCR 供应商签名协议。
+- 本轮不下载平台视频、抽帧或实现 ASR。
+- 不允许 Manifest 下载脚本、动态库或可执行文件；首版只允许模型数据和词典。
+
+## 4. Provider 契约
+
+`OcrProvider` 每次识别一张图片，输入只允许：
+
+- HTTPS 远程图片 URL；或
+- 应用媒体库中的 `localAssetId`；
+- 可选 MIME、宽高和稳定顺序。
+
+输出 `OcrDocument`：
+
+- `providerId`、`modelVersion`、`language`；
+- 按阅读顺序排列的 `OcrTextBlock`；
+- 每个文本块的 `text`、`confidence`、`readingOrder`；
+- 可选页码和归一化四边形坐标；
+- 本地计算的 `fullText` 和平均置信度。
+
+Provider 不返回日志内容、原图路径、API Key 或供应商原始响应。
+
+## 5. 稳定错误
+
+| OcrProviderErrorKind | 导入任务错误 | 可重试 |
+|---|---|---|
+| `cancelled` | `cancelled` | 否 |
+| `networkUnavailable` | `networkUnavailable` | 是 |
+| `timeout` | `timeout` | 是 |
+| `rateLimited` | `ocrFailed` | 是 |
+| `unknown` | `ocrFailed` | 是 |
+| `unavailable`、`modelNotInstalled`、`invalidInput`、`unauthorized`、`invalidResponse`、`inferenceFailed` | `ocrFailed` | 否 |
+
+错误文案最长保留 240 字符并压缩空白，不记录供应商响应正文。
+
+## 6. 导入预处理规则
+
+- 没有 `requiresOcr` 时直接调用下游 Processor，不调用 OCR。
+- 有 `requiresOcr` 但没有图片时返回 `ocrFailed`。
+- 默认最多识别前 20 张图片，超出时保留 `partialContent`。
+- 每张图片识别前检查取消，并通过同一取消令牌通知 Provider。
+- 识别文本去空、去重后追加到 `textFragments`，顺序从现有最大 `order + 1` 开始。
+- 每个 OCR 片段保留平均置信度、原媒体 `order` 和 Provider ID。
+- 至少获得一个非空 OCR 片段后移除 `requiresOcr`；全部为空则返回 `ocrFailed`。
+- 识别完成后只把新的 `ImportContent` 交给结构化菜谱 Processor，不改变 Recipe Schema。
+
+## 7. 模型插件 Manifest
+
+Manifest 是不可信输入，必须严格 Schema 校验。核心字段：
 
 ```json
 {
-  "id": "paddleocr-ppocrv5-zh-mobile",
+  "schemaVersion": 1,
+  "packageId": "paddleocr-ppocrv5-mobile-zh",
   "version": "1.0.0",
   "engine": "onnxruntime",
   "platforms": ["android", "ios"],
-  "files": [
-    {"name": "det.onnx", "sha256": "...", "size": 0},
-    {"name": "rec.onnx", "sha256": "...", "size": 0},
-    {"name": "dict.txt", "sha256": "...", "size": 0}
-  ],
+  "languages": ["zh-Hans", "en"],
   "minAppVersion": "0.1.0",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "role": "detector",
+      "path": "det.onnx",
+      "downloadUrl": "https://models.example.invalid/ocr/det.onnx",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "sizeBytes": 1
+    }
+  ]
 }
 ```
 
-安装流程：获取受信任 Manifest → 检查设备与空间 → 下载临时文件 → SHA-256 校验 → 原子安装 → 健康检查 → 切换版本；失败回滚。首版只接受模型数据和词典，不允许插件下载任意脚本或动态库。
+约束：
 
-## 5. 识别流水线
+- 版本使用语义化版本格式。
+- 下载地址必须是 HTTPS。
+- 文件路径必须是包内相对路径，禁止绝对路径、反斜杠和 `..`。
+- SHA-256 必须是 64 位十六进制字符串。
+- 文件大小必须大于 0，角色和路径不得重复。
+- 平台和语言不能为空。
+- 安装流程使用 `notInstalled → downloading → verifying → installed`；失败进入 `failed`。
+
+## 8. 安装安全边界
 
 ```text
-输入图片 → 方向修正 → 预处理 → 文本检测 → 裁剪/方向处理
-→ 文本识别 → 阅读顺序重排 → OcrResult → LLM 菜谱结构化
+获取受信任 Manifest
+→ 严格解析
+→ 检查平台、App 版本与空间
+→ 下载到临时目录
+→ 校验大小和 SHA-256
+→ 原子移动到版本目录
+→ 健康检查
+→ 激活版本
 ```
 
-OCR 只负责识别文字，不自行猜测菜名、用量或步骤关系。结构化推断交给 LLM，并在确认页显示低置信度和来源证据。
+- Manifest 来源域名和模型文件域名使用白名单。
+- 下载失败、哈希不符或健康检查失败时不激活，并保留上一可用版本。
+- 临时文件在失败、取消或应用重启恢复时清理。
+- 模型包不得包含脚本、动态库或可执行文件。
 
-## 6. 隐私与安全
+## 9. 本地与云端边界
 
-- 本地 OCR 默认不上传图片；云 OCR 执行前明确提示 Provider 和上传内容。
-- 临时图片与中间裁剪在任务结束或取消后清理。
-- 日志不写完整 OCR 文本和原图路径。
-- 模型包执行哈希校验，下载域名使用白名单。
-- 云 OCR Key 只存 Keychain/Keystore，不进入数据库、备份或同步。
+### 本地 PaddleOCR
 
-## 7. SPK-002 必测矩阵
+- 默认不上传图片。
+- 原生插件只接收应用可访问的本地媒体句柄和已安装模型版本。
+- 模型下载、状态管理与推理解耦。
+
+### 云端 OCR
+
+- 使用独立 Provider Adapter；配置、Key 与普通设置分离。
+- 调用前由产品层明确提示图片会上传到哪个 Provider。
+- Key 只存 Keychain/Keystore，不写 SQLite、日志、备份或同步。
+- Transport 必须使用 HTTPS，不允许忽略 TLS 错误。
+
+## 10. SPK-002 必测矩阵
 
 | 指标 | Android | iOS |
 |---|---:|---:|
-| 模型压缩后下载体积 | 待测 | 待测 |
+| 模型压缩下载体积 | 待测 | 待测 |
 | 首次模型加载耗时 | 待测 | 待测 |
 | 单张 1080p 图片耗时 | 待测 | 待测 |
 | 峰值内存 | 待测 | 待测 |
-| 中文字符准确性 | 待测 | 待测 |
-| 食材行顺序正确率 | 待测 | 待测 |
-| 竖排/倾斜/低清晰度表现 | 待测 | 待测 |
+| 中文字符准确率 | 待测 | 待测 |
+| 食材行阅读顺序正确率 | 待测 | 待测 |
+| 竖排、倾斜、低清晰度表现 | 待测 | 待测 |
 | 取消、低内存和模型损坏处理 | 待测 | 待测 |
 
-至少覆盖中低端 Android、主流 Android 和支持目标最低系统版本的 iPhone。
+Windows 只验证纯 Dart 契约与流水线；Android/iOS 原生桥接、模型安装和性能必须在真机完成。
 
-## 8. 参考资料
+## 11. 自动化验证
 
-- PP-OCRv5：<https://www.paddleocr.ai/main/en/version3.x/algorithm/PP-OCRv5/PP-OCRv5.html>
-- PaddleOCR：<https://github.com/PaddlePaddle/PaddleOCR>
-- ONNX Runtime Mobile：<https://onnxruntime.ai/docs/get-started/with-mobile.html>
-- ONNX Runtime 安装包：<https://onnxruntime.ai/docs/install/>
+纯 Dart Provider、Manifest、证据字段和导入预处理流水线已经完成并通过：
+
+```text
+dart format lib test：通过
+flutter analyze --no-pub：No issues found
+flutter test --no-pub：141 项全部通过
+```
+
+测试覆盖 OCR 输入输出模型、Manifest 严格校验、安装状态、稳定错误、取消、跳过、媒体排序、数量限制、部分结果、文本去重和 Runner 集成。Android/iOS ONNX Runtime 原生桥接、真实模型下载、云 OCR 供应商实现及真机性能指标仍属于 `SPK-002`，不在 `OCR-001` 完成范围内。

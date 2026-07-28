@@ -28,20 +28,44 @@ class ImportTextFragment {
     required this.kind,
     required String text,
     required this.order,
-  }) : text = _requireText(text, 'text') {
+    this.confidence,
+    this.sourceMediaOrder,
+    String? sourceProvider,
+  }) : text = _requireText(text, 'text'),
+       sourceProvider = _optionalText(sourceProvider) {
     if (order < 0) {
       throw ArgumentError.value(order, 'order', 'must be zero or greater');
+    }
+    if (confidence != null && (confidence! < 0 || confidence! > 1)) {
+      throw ArgumentError.value(
+        confidence,
+        'confidence',
+        'must be between zero and one',
+      );
+    }
+    if (sourceMediaOrder != null && sourceMediaOrder! < 0) {
+      throw ArgumentError.value(
+        sourceMediaOrder,
+        'sourceMediaOrder',
+        'must be zero or greater',
+      );
     }
   }
 
   final ImportTextFragmentKind kind;
   final String text;
   final int order;
+  final double? confidence;
+  final int? sourceMediaOrder;
+  final String? sourceProvider;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'kind': kind.name,
     'text': text,
     'order': order,
+    'confidence': confidence,
+    'sourceMediaOrder': sourceMediaOrder,
+    'sourceProvider': sourceProvider,
   };
 }
 
