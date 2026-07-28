@@ -4,6 +4,15 @@
 
 ## 2026-07-28
 
+### ASR-001 ASR Provider 与导入预处理
+
+- 新增统一 `AsrProvider`、`AsrMediaInput`、`AsrTranscript`、分段时间戳和稳定错误契约。
+- `ImportTextFragment` 新增语言、起止时间和说话人证据字段，JSON Schema 约束起止时间成对出现。
+- 新增 ASR 预处理 Decorator，支持跳过、媒体排序、数量/时长限制、分段去重、部分结果、取消和错误映射。
+- Runner 已验证 `extracting → transcribing → generating → review`。
+- `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 161 项测试通过；相关 Schema 通过 Draft 2020-12 元 Schema 校验。
+- `ASR-001` 进入 `DONE`；真实本地/云 ASR Provider、音轨抽取和真机性能保留给后续任务。
+
 ### OCR-001 OCR Provider 与导入预处理
 
 - 新增统一 `OcrProvider`、`OcrDocument`、`OcrTextBlock` 和稳定错误契约。

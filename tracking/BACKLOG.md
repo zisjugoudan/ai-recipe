@@ -15,7 +15,7 @@
 | SPK-002 | P0 | TODO | PaddleOCR 本地引擎与插件验证 | Android/iOS 至少各验证一条 PP-OCRv5 mobile + ONNX Runtime 可行路径及模型下载流程 | `research/spikes/SPK-002-local-ocr.md` |
 | SPK-003 | P0 | TODO | 自定义 LLM API 多协议兼容性验证 | 验证 OpenAI-compatible、Gemini、本地兼容服务、超时、取消和结构化输出 | `research/spikes/SPK-003-local-llm-api.md` |
 | ARCH-001 | P0 | TODO | 确定移动端架构与代码结构 | 按 Flutter 架构基线初始化可运行工程 | `docs/architecture/MOBILE_ARCHITECTURE.md` |
-| APP-001 | P0 | TODO | 创建本地优先菜谱库骨架 | SQLite v2、结构化菜谱 Repository 和自动化测试已在 SPK-001 验证；Application 用例和页面接入待开始 | `docs/architecture/LOCAL_DATABASE.md` |
+| APP-001 | P0 | DOING | 创建本地优先菜谱库后端用例 | SQLite v2 与结构化 Recipe Repository 已完成；补齐分类、菜谱 CRUD、查询和游客本地流程的 Application 契约 | `docs/architecture/LOCAL_DATABASE.md` |
 | APP-002 | P0 | TODO | 实现游客模式 | 无登录完成本地菜谱核心流程 | `docs/product/USER_STORIES.md` |
 | IMPORT-001 | P0 | DONE | 定义导入任务状态机 | 状态、错误、取消、重试、重启恢复、SQLite v2 迁移和 Application 用例已通过 41 项全量测试 | `docs/architecture/IMPORT_PIPELINE.md` |
 | IMPORT-002 | P0 | DONE | 定义内容获取与导入调度内核 | 统一内容 Schema、Adapter Registry、Runner、单执行器 Dispatcher、取消和稳定错误映射已通过自动化验收 | `docs/architecture/IMPORT_CONTENT_ADAPTER.md` |
@@ -23,7 +23,7 @@
 | AI-001 | P0 | DONE | 定义 LLM Provider 接口 | OpenAI-compatible 与 Gemini native 已通过统一接口、配置校验、错误映射和 Fixture 测试 | `docs/architecture/LOCAL_LLM_NETWORK_SECURITY.md` |
 | AI-002 | P0 | DONE | 实现结构化菜谱生成 Processor | 受限 Prompt、严格 Schema、草稿持久化、取消提交点和真实 SQLite 重开验证已通过 113 项全量测试 | `docs/architecture/RECIPE_GENERATION_PROCESSOR.md` |
 | OCR-001 | P0 | DONE | 定义 OCR Provider 与插件 Manifest | 统一 Provider、严格 Manifest、OCR 证据字段和导入预处理流水线已通过 141 项全量测试 | `docs/architecture/OCR_PLUGIN.md` |
-| ASR-001 | P0 | TODO | 定义 ASR Provider 与导入预处理流水线 | 本地与云 ASR 共享领域契约；音视频转写可安全补入 ImportContent | `docs/architecture/ASR_PROVIDER.md` |
+| ASR-001 | P0 | DONE | 定义 ASR Provider 与导入预处理流水线 | 统一 Provider、时间证据、媒体限制、部分结果、错误映射和 Runner 集成已通过 161 项全量测试 | `docs/architecture/ASR_PROVIDER.md` |
 
 ## 待细化产品任务
 

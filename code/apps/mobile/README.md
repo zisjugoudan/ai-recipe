@@ -19,7 +19,8 @@
 - IMPORT-003 公开内容 HTTP Transport、小红书/抖音公共元数据 Adapter、HTML/JSON-LD 解析和人工粘贴/本地媒体降级。
 - AI-002 受限 Prompt、严格结构化菜谱 Schema、草稿持久化、错误映射和保存提交点。
 - OCR-001 统一 OCR Provider、严格模型 Manifest、OCR 证据字段和导入预处理流水线。
-- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 141 项测试通过。
+- ASR-001 统一 ASR Provider、分段时间证据、音视频限制、部分结果和导入预处理流水线。
+- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 161 项测试通过。
 
 ## 本地运行
 
@@ -61,6 +62,6 @@ Debug APK 已成功生成并在 Android 12 真机安装、启动。详细记录�
 - iOS 仅加入本地网络用途说明和 `NSAllowsLocalNetworking`；任意局域网 IP 的明文 HTTP 行为仍需在 macOS/iPhone 上实测，不能视为已通过。
 - 尚未验证系统分享、后台任务、本地通知、OCR 原生桥接和真实 LLM 服务兼容性。
 - 设置页当前保存一个活动配置；多配置管理和模型列表读取属于后续任务。
-- 已支持从已有文本或 OCR 结果生成结构化菜谱草稿；OCR 纯 Dart 预处理已完成，Android/iOS ONNX Runtime 原生桥接、模型下载、真实云 OCR、ASR 和真实 LLM 服务兼容性尚待验证。
+- 已支持从已有文本、OCR 或 ASR 结果生成结构化菜谱草稿；OCR/ASR 纯 Dart 契约与预处理已完成，Android/iOS ONNX Runtime 原生桥接、模型下载、真实 OCR/ASR Provider 和真实 LLM 服务兼容性尚待验证。
 
 进度与结论以仓库根目录的 `tracking/CURRENT.md` 和 `research/spikes/SPK-001-cross-platform-framework.md` 为准。

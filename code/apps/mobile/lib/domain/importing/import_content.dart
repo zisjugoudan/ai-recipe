@@ -31,8 +31,14 @@ class ImportTextFragment {
     this.confidence,
     this.sourceMediaOrder,
     String? sourceProvider,
+    String? sourceLanguage,
+    this.sourceStartMs,
+    this.sourceEndMs,
+    String? speakerLabel,
   }) : text = _requireText(text, 'text'),
-       sourceProvider = _optionalText(sourceProvider) {
+       sourceProvider = _optionalText(sourceProvider),
+       sourceLanguage = _optionalText(sourceLanguage),
+       speakerLabel = _optionalText(speakerLabel) {
     if (order < 0) {
       throw ArgumentError.value(order, 'order', 'must be zero or greater');
     }
@@ -50,6 +56,25 @@ class ImportTextFragment {
         'must be zero or greater',
       );
     }
+    if ((sourceStartMs == null) != (sourceEndMs == null)) {
+      throw ArgumentError(
+        'sourceStartMs and sourceEndMs must be provided together.',
+      );
+    }
+    if (sourceStartMs != null && sourceStartMs! < 0) {
+      throw ArgumentError.value(
+        sourceStartMs,
+        'sourceStartMs',
+        'must be zero or greater',
+      );
+    }
+    if (sourceEndMs != null && sourceEndMs! <= sourceStartMs!) {
+      throw ArgumentError.value(
+        sourceEndMs,
+        'sourceEndMs',
+        'must be greater than sourceStartMs',
+      );
+    }
   }
 
   final ImportTextFragmentKind kind;
@@ -58,6 +83,10 @@ class ImportTextFragment {
   final double? confidence;
   final int? sourceMediaOrder;
   final String? sourceProvider;
+  final String? sourceLanguage;
+  final int? sourceStartMs;
+  final int? sourceEndMs;
+  final String? speakerLabel;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'kind': kind.name,
@@ -66,6 +95,10 @@ class ImportTextFragment {
     'confidence': confidence,
     'sourceMediaOrder': sourceMediaOrder,
     'sourceProvider': sourceProvider,
+    'sourceLanguage': sourceLanguage,
+    'sourceStartMs': sourceStartMs,
+    'sourceEndMs': sourceEndMs,
+    'speakerLabel': speakerLabel,
   };
 }
 

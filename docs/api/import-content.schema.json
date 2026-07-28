@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-recipe.local/schemas/import-content.v1.json",
   "title": "ImportContentV1",
@@ -40,8 +40,34 @@
           "order": { "type": "integer", "minimum": 0 },
           "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
           "sourceMediaOrder": { "type": ["integer", "null"], "minimum": 0 },
-          "sourceProvider": { "type": ["string", "null"] }
-        }
+          "sourceProvider": { "type": ["string", "null"] },
+          "sourceLanguage": { "type": ["string", "null"] },
+          "sourceStartMs": { "type": ["integer", "null"], "minimum": 0 },
+          "sourceEndMs": { "type": ["integer", "null"], "minimum": 1 },
+          "speakerLabel": { "type": ["string", "null"] }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": ["sourceStartMs"],
+              "properties": { "sourceStartMs": { "type": "integer" } }
+            },
+            "then": {
+              "required": ["sourceEndMs"],
+              "properties": { "sourceEndMs": { "type": "integer" } }
+            }
+          },
+          {
+            "if": {
+              "required": ["sourceEndMs"],
+              "properties": { "sourceEndMs": { "type": "integer" } }
+            },
+            "then": {
+              "required": ["sourceStartMs"],
+              "properties": { "sourceStartMs": { "type": "integer" } }
+            }
+          }
+        ]
       }
     },
     "media": {

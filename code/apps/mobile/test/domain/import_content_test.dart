@@ -86,35 +86,47 @@ void main() {
     );
   });
 
-  test('text fragments preserve optional OCR evidence and validate ranges', () {
+  test('text fragments preserve OCR and ASR evidence and validate ranges', () {
     final fragment = ImportTextFragment(
-      kind: ImportTextFragmentKind.body,
-      text: ' OCR text ',
+      kind: ImportTextFragmentKind.caption,
+      text: ' ASR text ',
       order: 3,
       confidence: 0.75,
       sourceMediaOrder: 2,
-      sourceProvider: ' paddleocr-local ',
+      sourceProvider: ' whisper-local ',
+      sourceLanguage: ' zh-Hans ',
+      sourceStartMs: 1200,
+      sourceEndMs: 3400,
+      speakerLabel: ' cook ',
     );
 
-    expect(fragment.text, 'OCR text');
-    expect(fragment.sourceProvider, 'paddleocr-local');
+    expect(fragment.text, 'ASR text');
+    expect(fragment.sourceProvider, 'whisper-local');
+    expect(fragment.sourceLanguage, 'zh-Hans');
+    expect(fragment.speakerLabel, 'cook');
     expect(fragment.toJson(), <String, Object?>{
-      'kind': 'body',
-      'text': 'OCR text',
+      'kind': 'caption',
+      'text': 'ASR text',
       'order': 3,
       'confidence': 0.75,
       'sourceMediaOrder': 2,
-      'sourceProvider': 'paddleocr-local',
+      'sourceProvider': 'whisper-local',
+      'sourceLanguage': 'zh-Hans',
+      'sourceStartMs': 1200,
+      'sourceEndMs': 3400,
+      'speakerLabel': 'cook',
     });
-    expect(
-      ImportTextFragment(
-        kind: ImportTextFragmentKind.body,
-        text: 'text',
-        order: 0,
-        sourceProvider: '   ',
-      ).sourceProvider,
-      isNull,
+    final emptyEvidence = ImportTextFragment(
+      kind: ImportTextFragmentKind.body,
+      text: 'text',
+      order: 0,
+      sourceProvider: '   ',
+      sourceLanguage: '   ',
+      speakerLabel: '   ',
     );
+    expect(emptyEvidence.sourceProvider, isNull);
+    expect(emptyEvidence.sourceLanguage, isNull);
+    expect(emptyEvidence.speakerLabel, isNull);
     expect(
       () => ImportTextFragment(
         kind: ImportTextFragmentKind.body,
@@ -130,6 +142,44 @@ void main() {
         text: 'text',
         order: 0,
         sourceMediaOrder: -1,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => ImportTextFragment(
+        kind: ImportTextFragmentKind.caption,
+        text: 'text',
+        order: 0,
+        sourceStartMs: 0,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => ImportTextFragment(
+        kind: ImportTextFragmentKind.caption,
+        text: 'text',
+        order: 0,
+        sourceEndMs: 1,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => ImportTextFragment(
+        kind: ImportTextFragmentKind.caption,
+        text: 'text',
+        order: 0,
+        sourceStartMs: -1,
+        sourceEndMs: 1,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => ImportTextFragment(
+        kind: ImportTextFragmentKind.caption,
+        text: 'text',
+        order: 0,
+        sourceStartMs: 100,
+        sourceEndMs: 100,
       ),
       throwsArgumentError,
     );
