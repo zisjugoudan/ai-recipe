@@ -4,6 +4,16 @@
 
 ## 2026-07-28
 
+### IMPORT-003 公开内容获取与人工降级
+
+- 新增可注入的受限 HTTP Transport，覆盖超时、取消、有限重定向、平台主机白名单、HTTPS 降级拒绝、响应体上限和 Content-Type 白名单。
+- 新增 HTML、Open Graph、JSON-LD、独立 JSON 和纯文本公共元数据解析，支持相对 URL、媒体去重和顺序保持。
+- 新增小红书与抖音公开内容 Adapter，统一生成文本片段、图片/视频引用、作者、发布时间和后续 OCR/ASR 警告。
+- 登录要求、内容不可用、超时、网络、安全策略和空载荷均映射为稳定且脱敏的项目错误。
+- 新增粘贴正文、本地图片和本地视频人工降级路径，不实现登录、验证码、签名、访问控制或反爬绕过。
+- 新增 4 个固定 Fixture 和 36 项定向测试；`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 94 项测试通过。
+- `IMPORT-003` 验收完成并进入 `DONE`；下一阶段转入 OCR/ASR 与 LLM 结构化菜谱 Processor。
+
 ### IMPORT-002 内容 Adapter 与单执行器调度内核
 
 - 新增统一导入内容模型和 `docs/api/import-content.schema.json`。

@@ -16,7 +16,8 @@
 - IMPORT-002 统一导入内容模型与 JSON Schema。
 - 平台 Adapter Registry、导入 Runner 和单执行器 Dispatcher。
 - 稳定错误映射、任务取消、指数退避、批次失败隔离和未知异常脱敏。
-- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 58 项测试通过。
+- IMPORT-003 公开内容 HTTP Transport、小红书/抖音公共元数据 Adapter、HTML/JSON-LD 解析和人工粘贴/本地媒体降级。
+- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 94 项测试通过。
 
 ## 本地运行
 
@@ -60,4 +61,3 @@ Debug APK 已成功生成并在 Android 12 真机安装、启动。详细记录�
 - 设置页当前保存一个活动配置；多配置管理、模型列表读取和菜谱结构化输出属于后续任务。
 
 进度与结论以仓库根目录的 `tracking/CURRENT.md` 和 `research/spikes/SPK-001-cross-platform-framework.md` 为准。
-
