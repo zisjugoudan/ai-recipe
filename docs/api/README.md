@@ -14,6 +14,7 @@
 ## 已建立契约
 
 - `import-task.schema.json`：导入任务 v1，已由 Domain、Application、SQLite v2 和迁移测试验证。
+- `import-content.schema.json`：统一导入内容 v1，已由 Domain、Runner 和 Dispatcher 自动化测试验证。
 
 ## 计划契约
 

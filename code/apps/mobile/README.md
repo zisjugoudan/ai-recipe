@@ -13,6 +13,10 @@
 - Provider 请求构造、响应解析、配置校验和设置页 Widget 测试。
 - Local-first SQLite Schema v2、菜谱聚合 Repository 和 v1 → v2 迁移。
 - 可持久化的链接导入任务状态机、Application 用例、取消、重试和重启恢复。
+- IMPORT-002 统一导入内容模型与 JSON Schema。
+- 平台 Adapter Registry、导入 Runner 和单执行器 Dispatcher。
+- 稳定错误映射、任务取消、指数退避、批次失败隔离和未知异常脱敏。
+- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 58 项测试通过。
 
 ## 本地运行
 

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-recipe.local/schemas/import-content.v1.json",
+  "title": "ImportContentV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "sourceUrl",
+    "normalizedUrl",
+    "sourcePlatform",
+    "resolvedUrl",
+    "contentType",
+    "capturedAt",
+    "textFragments",
+    "media",
+    "warnings"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "sourceUrl": { "type": "string", "format": "uri" },
+    "normalizedUrl": { "type": "string", "format": "uri" },
+    "sourcePlatform": { "type": "string", "enum": ["xiaohongshu", "douyin"] },
+    "resolvedUrl": { "type": "string", "format": "uri" },
+    "contentType": { "type": "string", "enum": ["article", "imageGallery", "video", "mixed", "unknown"] },
+    "title": { "type": ["string", "null"] },
+    "description": { "type": ["string", "null"] },
+    "authorName": { "type": ["string", "null"] },
+    "publishedAt": { "type": ["string", "null"], "format": "date-time" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "textFragments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "text", "order"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["title", "description", "body", "caption", "altText", "metadata"] },
+          "text": { "type": "string", "minLength": 1 },
+          "order": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "media": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "order"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["image", "video", "audio"] },
+          "remoteUrl": { "type": ["string", "null"], "format": "uri" },
+          "localAssetId": { "type": ["string", "null"] },
+          "mimeType": { "type": ["string", "null"] },
+          "width": { "type": ["integer", "null"], "minimum": 1 },
+          "height": { "type": ["integer", "null"], "minimum": 1 },
+          "durationMs": { "type": ["integer", "null"], "minimum": 0 },
+          "order": { "type": "integer", "minimum": 0 }
+        },
+        "anyOf": [
+          { "required": ["remoteUrl"], "properties": { "remoteUrl": { "type": "string", "minLength": 1 } } },
+          { "required": ["localAssetId"], "properties": { "localAssetId": { "type": "string", "minLength": 1 } } }
+        ]
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "enum": ["missingTitle", "missingText", "missingMedia", "partialContent", "requiresOcr", "requiresAsr", "redirected"] }
+    }
+  },
+  "anyOf": [
+    { "required": ["title"], "properties": { "title": { "type": "string", "minLength": 1 } } },
+    { "required": ["description"], "properties": { "description": { "type": "string", "minLength": 1 } } },
+    { "properties": { "textFragments": { "minItems": 1 } } },
+    { "properties": { "media": { "minItems": 1 } } }
+  ]
+}

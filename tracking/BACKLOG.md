@@ -1,6 +1,6 @@
-# 项目任务清单
+﻿# 项目任务清单
 
-> 状态只使用：`TODO`、`DOING`、`BLOCKED`、`VERIFY`、`DONE`、`CANCELLED`。  
+> 状态只使用：`TODO`、`DOING`、`BLOCKED`、`VERIFY`、`DONE`、`CANCELLED`。
 > 原则上同一时间只有一个主任务处于 `DOING`。
 
 ## 当前任务
@@ -18,8 +18,8 @@
 | APP-001 | P0 | TODO | 创建本地优先菜谱库骨架 | SQLite v2、结构化菜谱 Repository 和自动化测试已在 SPK-001 验证；Application 用例和页面接入待开始 | `docs/architecture/LOCAL_DATABASE.md` |
 | APP-002 | P0 | TODO | 实现游客模式 | 无登录完成本地菜谱核心流程 | `docs/product/USER_STORIES.md` |
 | IMPORT-001 | P0 | DONE | 定义导入任务状态机 | 状态、错误、取消、重试、重启恢复、SQLite v2 迁移和 Application 用例已通过 41 项全量测试 | `docs/architecture/IMPORT_PIPELINE.md` |
-| IMPORT-002 | P0 | TODO | 定义内容获取与导入调度内核 | 平台 Adapter、统一提取结果、单执行器调度、错误映射和可注入测试替身形成稳定契约 | `docs/architecture/IMPORT_PIPELINE.md` |
-| IMPORT-003 | P0 | TODO | 实现公开内容获取与降级 | 小红书/抖音公开内容路径可接入；失败时保留人工粘贴/媒体导入降级；不绕过登录和反爬 | `docs/product/USER_STORIES.md` |
+| IMPORT-002 | P0 | DONE | 定义内容获取与导入调度内核 | 统一内容 Schema、Adapter Registry、Runner、单执行器 Dispatcher、取消和稳定错误映射已通过自动化验收 | `docs/architecture/IMPORT_CONTENT_ADAPTER.md` |
+| IMPORT-003 | P0 | DOING | 实现公开内容获取与降级 | 小红书/抖音公开内容路径可接入；失败时保留人工粘贴/媒体导入降级；不绕过登录和反爬 | `docs/product/USER_STORIES.md` |
 | AI-001 | P0 | TODO | 定义 LLM Provider 接口 | OpenAI-compatible 和 Ollama 可接入统一接口 | `docs/architecture/LOCAL_LLM_NETWORK_SECURITY.md` |
 | OCR-001 | P0 | TODO | 定义 OCR Provider 与插件 Manifest | PaddleOCR 本地插件和自有云 OCR 使用统一输出 | `docs/architecture/OCR_PLUGIN.md` |
 

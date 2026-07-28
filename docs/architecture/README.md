@@ -17,6 +17,7 @@
 - [移动端架构基线](MOBILE_ARCHITECTURE.md)
 - [Local-first 数据库与迁移契约](LOCAL_DATABASE.md)
 - [链接导入任务流水线](IMPORT_PIPELINE.md)
+- [导入内容 Adapter 与调度内核](IMPORT_CONTENT_ADAPTER.md)
 - [OCR Provider 与本地插件方案](OCR_PLUGIN.md)
 - [LLM 自定义 API 与 Provider 适配方案](LOCAL_LLM_NETWORK_SECURITY.md)
 
