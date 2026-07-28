@@ -1,6 +1,6 @@
 ﻿# Local-first 数据库与迁移契约
 
-- 状态：Schema v2 已实现并通过迁移验收
+- 状态：Schema v2 与 APP-001 Application 边界已实现并通过验收
 - 日期：2026-07-28
 - 关联任务：`SPK-001`、`APP-001`、`IMPORT-001`
 - 关联用户故事：`US-001`、`US-003`、`US-009`
@@ -11,8 +11,8 @@
 
 - 游客和登录用户共用同一套本地数据模型，`userId` 允许为空。
 - 菜谱、食材、步骤、分类和菜谱分类关系使用关系表保存。
-- 菜谱聚合支持新增、读取、更新、列表、搜索、收藏筛选、软删除、恢复和永久删除。
-- 分类支持新增/更新、排序读取和软删除。
+- 菜谱聚合支持新增、读取、更新、列表、搜索、收藏、状态、分类筛选、软删除、恢复和永久删除。
+- 分类支持新增、详情读取、更新、排序读取、软删除、恢复和永久删除。
 - 写入菜谱聚合时，主表、食材、步骤和分类关系处于同一事务。
 - 导入任务支持持久化、状态筛选、可恢复任务查询、软删除和永久删除。
 - 使用稳定字符串 ID；上层应传入 UUID，不使用 SQLite 自增 ID 作为同步身份。
@@ -27,6 +27,9 @@ lib/domain/recipe/
 
 lib/domain/importing/
   导入任务状态机与 Repository 契约
+
+lib/application/recipe/
+  菜谱库输入模型、稳定错误和 Application Facade
 
 lib/application/importing/
   导入任务用例，不依赖 SQLite
@@ -84,8 +87,11 @@ Presentation 和页面不得直接执行 SQL。Application 只依赖领域 Repos
 `RecipeCategoryRepository`：
 
 - `upsertCategory`
+- `getCategoryById`
 - `listCategories`
 - `softDeleteCategory`
+- `restoreCategory`
+- `permanentlyDeleteCategory`
 
 `ImportTaskRepository`：
 
@@ -112,13 +118,15 @@ Presentation 和页面不得直接执行 SQL。Application 只依赖领域 Repos
 自动化测试使用 `sqflite_common_ffi` 和真实 SQLite 临时文件，覆盖：
 
 1. 菜谱关闭数据库并重新打开后的完整持久化。
-2. 菜谱更新、搜索、收藏筛选、软删除、恢复和永久删除。
-3. 无效分类关系触发外键错误并回滚整个菜谱。
-4. 导入任务关闭重开后保留失败、重试和时间字段。
-5. 可恢复任务筛选、状态筛选、软删除排除和永久删除。
-6. Schema v1 → v2 后旧菜谱保留、`import_tasks` 可写且数据库版本为 2。
+2. 菜谱更新、搜索、收藏、状态、分类筛选、软删除、恢复和永久删除。
+3. 分类详情读取、软删除、恢复、永久删除，以及删除分类后关系清理。
+4. 无效分类关系触发外键错误并回滚整个菜谱。
+5. 导入任务关闭重开后保留失败、重试和时间字段。
+6. 可恢复任务筛选、状态筛选、软删除排除和永久删除。
+7. Schema v1 → v2 后旧菜谱保留、`import_tasks` 可写且数据库版本为 2。
 
 验收记录：
 
 - `tests/acceptance/SPK-001-local-recipe-database-2026-07-28.md`
 - `tests/acceptance/IMPORT-001-import-task-state-machine-2026-07-28.md`
+- `tests/acceptance/APP-001-recipe-library-use-cases-2026-07-28.md`

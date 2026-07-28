@@ -33,6 +33,7 @@ void main() {
     String id = 'recipe-tomato-eggs',
     String title = '番茄炒蛋',
     bool favorite = true,
+    RecipeStatus status = RecipeStatus.published,
     List<String> categoryIds = const <String>['category-home'],
     int localVersion = 1,
     DateTime? updatedAt,
@@ -50,7 +51,7 @@ void main() {
       difficulty: RecipeDifficulty.easy,
       notes: '番茄先炒出汁',
       favorite: favorite,
-      status: RecipeStatus.published,
+      status: status,
       ingredients:
           ingredients ??
           <Ingredient>[
@@ -285,5 +286,78 @@ void main() {
     expect(loaded!.categoryIds, <String>['category-breakfast']);
     expect(await repository.listCategories(), hasLength(1));
     expect(await repository.listCategories(includeDeleted: true), hasLength(2));
+  });
+  test('lists recipes by status and active category relation', () async {
+    await repository.upsertCategory(category());
+    await repository.upsertCategory(
+      category(id: 'category-breakfast', name: '早餐', sortOrder: 1),
+    );
+    await repository.upsertRecipe(recipe());
+    await repository.upsertRecipe(
+      recipe(
+        id: 'recipe-porridge',
+        title: '白粥',
+        favorite: false,
+        status: RecipeStatus.draft,
+        categoryIds: const <String>['category-breakfast'],
+        ingredients: <Ingredient>[
+          Ingredient(id: 'ingredient-rice', name: '大米', sortOrder: 0),
+        ],
+        steps: <RecipeStep>[
+          RecipeStep(id: 'step-porridge', stepNumber: 1, description: '小火煮至软烂'),
+        ],
+      ),
+    );
+
+    expect(
+      (await repository.listRecipes(
+        status: RecipeStatus.draft,
+      )).map((item) => item.id),
+      <String>['recipe-porridge'],
+    );
+    expect(
+      (await repository.listRecipes(
+        categoryId: 'category-home',
+      )).map((item) => item.id),
+      <String>['recipe-tomato-eggs'],
+    );
+
+    await repository.softDeleteCategory(
+      'category-home',
+      createdAt.add(const Duration(hours: 1)),
+    );
+    expect(await repository.listRecipes(categoryId: 'category-home'), isEmpty);
+  });
+
+  test('gets, restores and permanently deletes a category', () async {
+    await repository.upsertCategory(category());
+
+    final active = await repository.getCategoryById('category-home');
+    expect(active, isNotNull);
+    expect(active!.name, '家常菜');
+
+    final deletedAt = createdAt.add(const Duration(hours: 2));
+    await repository.softDeleteCategory('category-home', deletedAt);
+    expect(await repository.getCategoryById('category-home'), isNull);
+    final deleted = await repository.getCategoryById(
+      'category-home',
+      includeDeleted: true,
+    );
+    expect(deleted!.deletedAt, deletedAt);
+    expect(deleted.localVersion, 2);
+
+    final restoredAt = deletedAt.add(const Duration(minutes: 5));
+    await repository.restoreCategory('category-home', restoredAt);
+    final restored = await repository.getCategoryById('category-home');
+    expect(restored!.deletedAt, isNull);
+    expect(restored.updatedAt, restoredAt);
+    expect(restored.localVersion, 3);
+
+    await repository.softDeleteCategory('category-home', deletedAt);
+    await repository.permanentlyDeleteCategory('category-home');
+    expect(
+      await repository.getCategoryById('category-home', includeDeleted: true),
+      isNull,
+    );
   });
 }

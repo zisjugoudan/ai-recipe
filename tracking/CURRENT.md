@@ -11,7 +11,7 @@ UI 暂缓。当前优先完成 Domain、Application、Data 和 Provider，使后
 
 ## 当前主任务
 
-`APP-001`：补齐本地优先菜谱库的 Application 用例，覆盖分类、菜谱 CRUD、查询排序和游客本地保存，使后续 Flutter 页面只依赖稳定用例而不直接访问 SQLite。
+`APP-002`：实现游客/登录会话与后端能力策略，明确本地菜谱、云保存、平台托管 AI、自定义 LLM API 和 OCR Provider 的可用条件，使页面只依赖统一能力判定，不自行推断登录状态或服务来源。
 
 ## 已完成基线
 
@@ -24,8 +24,9 @@ UI 暂缓。当前优先完成 Domain、Application、Data 和 Provider，使后
 - `AI-002`：受限 Prompt、严格 Schema 校验、Recipe 草稿持久化、取消提交点和真实 SQLite 重开验证。
 - `OCR-001`：统一 OCR Provider、严格模型 Manifest、OCR 证据字段、导入预处理、稳定错误和 Runner 集成。
 - `ASR-001`：统一 ASR Provider、分段时间证据、媒体限制、部分结果、稳定错误和 Runner 集成。
+- `APP-001`：菜谱与分类 CRUD、搜索/收藏/状态/分类筛选、回收站生命周期、稳定错误和游客 SQLite 重开持久化。
 - Android Debug APK 已通过 ASCII Junction 构建，并在 Android 12 真机安装启动。
-- 最近一次自动化验证：`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 161 项测试通过；3 份 JSON Schema 通过 Draft 2020-12 元 Schema 校验。
+- 最近一次自动化验证：`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 176 项测试通过；3 份 JSON Schema 通过 Draft 2020-12 元 Schema 校验。
 
 ## 当前实施边界
 
@@ -38,11 +39,11 @@ UI 暂缓。当前优先完成 Domain、Application、Data 和 Provider，使后
 
 ## 下一步
 
-1. 为 `APP-001` 补齐分类与菜谱库 Application 用例的架构边界和验收记录。
-2. 基于现有 Recipe Repository 增加分类 Repository、列表查询、详情读取、创建、更新、删除和分类分配用例。
-3. 用内存与真实 SQLite 测试验证游客本地流程和重开持久化。
-4. 保持 UI 暂缓，页面后续只依赖 Application Facade / Use Case。
-5. 保持真实 OCR/ASR 原生或云 Provider 为独立 Spike，不阻塞纯 Dart 后端用例。
+1. 定义游客与登录会话的纯 Dart 状态模型和持久化边界。
+2. 定义本地手动菜谱、自定义 LLM API、平台托管 AI、云 OCR 与云保存的能力矩阵。
+3. 创建 `APP-002` 架构文档和可执行验收记录，再进入实现。
+4. 实现供 Application 与后续页面调用的统一能力策略，不实现登录页面或其他 UI。
+5. 保持真实 OCR/ASR 原生或云 Provider 为独立 Spike，不阻塞能力策略。
 
 ## 暂停项
 

@@ -4,6 +4,18 @@
 
 ## 2026-07-28
 
+### APP-001 本地优先菜谱库 Application 用例
+
+- 新增 `RecipeLibraryUseCases`，统一手动创建、详情、更新、筛选、收藏、回收站和分类管理入口。
+- UI 后续只依赖 Application Facade，不直接访问 SQLite、HTTP Client 或供应商 SDK。
+- 更新使用完整表单快照，保留聚合身份并校验食材/步骤 ID 所属；新子项 ID 由 Application 生成。
+- Recipe Repository 新增状态与分类筛选；Category Repository 新增详情、恢复和永久删除。
+- 分类软删除只移除菜谱分类关系，恢复不自动恢复历史关系。
+- Repository 未知异常统一映射为脱敏的稳定 Application 错误。
+- 真实 SQLite 已验证游客 `userId == null` 聚合关闭重开、Unicode 内容、筛选和回收站流程。
+- `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 176 项通过，`git diff --check` 通过。
+- `APP-001` 进入 `DONE`；下一主任务切换为 `APP-002` 游客模式后端能力策略。
+
 ### ASR-001 ASR Provider 与导入预处理
 
 - 新增统一 `AsrProvider`、`AsrMediaInput`、`AsrTranscript`、分段时间戳和稳定错误契约。

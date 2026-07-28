@@ -73,6 +73,8 @@ class SqliteRecipeRepository
   Future<List<Recipe>> listRecipes({
     String? query,
     bool? favorite,
+    RecipeStatus? status,
+    String? categoryId,
     bool includeDeleted = false,
   }) async {
     final database = await _appDatabase.database;
@@ -85,6 +87,24 @@ class SqliteRecipeRepository
       if (favorite != null) {
         whereParts.add('r.favorite = ?');
         whereArgs.add(favorite ? 1 : 0);
+      }
+      if (status != null) {
+        whereParts.add('r.status = ?');
+        whereArgs.add(status.wireName);
+      }
+      final normalizedCategoryId = categoryId?.trim();
+      if (normalizedCategoryId != null && normalizedCategoryId.isNotEmpty) {
+        whereParts.add('''
+          EXISTS (
+            SELECT 1 FROM recipe_category_relations relation
+            INNER JOIN recipe_categories category
+              ON category.id = relation.category_id
+            WHERE relation.recipe_id = r.id
+              AND relation.category_id = ?
+              AND category.deleted_at IS NULL
+          )
+        ''');
+        whereArgs.add(normalizedCategoryId);
       }
       final normalizedQuery = query?.trim();
       if (normalizedQuery != null && normalizedQuery.isNotEmpty) {
@@ -179,6 +199,21 @@ class SqliteRecipeRepository
   }
 
   @override
+  Future<RecipeCategory?> getCategoryById(
+    String id, {
+    bool includeDeleted = false,
+  }) async {
+    final database = await _appDatabase.database;
+    final rows = await database.query(
+      'recipe_categories',
+      where: includeDeleted ? 'id = ?' : 'id = ? AND deleted_at IS NULL',
+      whereArgs: <Object?>[id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : _categoryFromRow(rows.single);
+  }
+
+  @override
   Future<List<RecipeCategory>> listCategories({
     bool includeDeleted = false,
   }) async {
@@ -210,6 +245,31 @@ class SqliteRecipeRepository
         whereArgs: <Object?>[id],
       );
     });
+  }
+
+  @override
+  Future<void> restoreCategory(String id, DateTime updatedAt) async {
+    final database = await _appDatabase.database;
+    final changed = await database.rawUpdate(
+      '''
+        UPDATE recipe_categories
+        SET deleted_at = NULL, updated_at = ?, local_version = local_version + 1
+        WHERE id = ?
+      ''',
+      <Object?>[_toEpoch(updatedAt), id],
+    );
+    _requireChanged(changed, '分类', id);
+  }
+
+  @override
+  Future<void> permanentlyDeleteCategory(String id) async {
+    final database = await _appDatabase.database;
+    final changed = await database.delete(
+      'recipe_categories',
+      where: 'id = ?',
+      whereArgs: <Object?>[id],
+    );
+    _requireChanged(changed, '分类', id);
   }
 
   Future<Recipe?> _loadRecipe(

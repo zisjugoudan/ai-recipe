@@ -15,8 +15,8 @@
 | SPK-002 | P0 | TODO | PaddleOCR 本地引擎与插件验证 | Android/iOS 至少各验证一条 PP-OCRv5 mobile + ONNX Runtime 可行路径及模型下载流程 | `research/spikes/SPK-002-local-ocr.md` |
 | SPK-003 | P0 | TODO | 自定义 LLM API 多协议兼容性验证 | 验证 OpenAI-compatible、Gemini、本地兼容服务、超时、取消和结构化输出 | `research/spikes/SPK-003-local-llm-api.md` |
 | ARCH-001 | P0 | TODO | 确定移动端架构与代码结构 | 按 Flutter 架构基线初始化可运行工程 | `docs/architecture/MOBILE_ARCHITECTURE.md` |
-| APP-001 | P0 | DOING | 创建本地优先菜谱库后端用例 | SQLite v2 与结构化 Recipe Repository 已完成；补齐分类、菜谱 CRUD、查询和游客本地流程的 Application 契约 | `docs/architecture/LOCAL_DATABASE.md` |
-| APP-002 | P0 | TODO | 实现游客模式 | 无登录完成本地菜谱核心流程 | `docs/product/USER_STORIES.md` |
+| APP-001 | P0 | DONE | 创建本地优先菜谱库后端用例 | 菜谱/分类 CRUD、筛选、回收站、稳定错误和游客 SQLite 重开已通过 176 项全量测试 | `docs/architecture/RECIPE_LIBRARY_APPLICATION.md` |
+| APP-002 | P0 | DOING | 实现游客模式后端能力策略 | APP-001 已提供本地 CRUD；补齐游客/登录会话、云端 AI 与云保存能力判定，不实现页面 | `docs/product/USER_STORIES.md` |
 | IMPORT-001 | P0 | DONE | 定义导入任务状态机 | 状态、错误、取消、重试、重启恢复、SQLite v2 迁移和 Application 用例已通过 41 项全量测试 | `docs/architecture/IMPORT_PIPELINE.md` |
 | IMPORT-002 | P0 | DONE | 定义内容获取与导入调度内核 | 统一内容 Schema、Adapter Registry、Runner、单执行器 Dispatcher、取消和稳定错误映射已通过自动化验收 | `docs/architecture/IMPORT_CONTENT_ADAPTER.md` |
 | IMPORT-003 | P0 | DONE | 实现公开内容获取与降级 | 小红书/抖音公开 Fixture、受限 HTTP Transport、稳定错误映射和人工粘贴/媒体降级已通过 94 项全量测试 | `docs/architecture/PUBLIC_CONTENT_IMPORT.md` |

@@ -54,11 +54,17 @@ class MemoryRecipeRepository implements RecipeRepository {
   Future<List<Recipe>> listRecipes({
     String? query,
     bool? favorite,
+    RecipeStatus? status,
+    String? categoryId,
     bool includeDeleted = false,
   }) async {
     return recipes.values.where((recipe) {
       if (!includeDeleted && recipe.deletedAt != null) return false;
       if (favorite != null && recipe.favorite != favorite) return false;
+      if (status != null && recipe.status != status) return false;
+      if (categoryId != null && !recipe.categoryIds.contains(categoryId)) {
+        return false;
+      }
       if (query != null && !recipe.title.contains(query)) return false;
       return true;
     }).toList();

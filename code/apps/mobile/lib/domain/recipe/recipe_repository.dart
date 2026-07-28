@@ -8,6 +8,8 @@ abstract interface class RecipeRepository {
   Future<List<Recipe>> listRecipes({
     String? query,
     bool? favorite,
+    RecipeStatus? status,
+    String? categoryId,
     bool includeDeleted = false,
   });
 
@@ -21,7 +23,16 @@ abstract interface class RecipeRepository {
 abstract interface class RecipeCategoryRepository {
   Future<void> upsertCategory(RecipeCategory category);
 
+  Future<RecipeCategory?> getCategoryById(
+    String id, {
+    bool includeDeleted = false,
+  });
+
   Future<List<RecipeCategory>> listCategories({bool includeDeleted = false});
 
   Future<void> softDeleteCategory(String id, DateTime deletedAt);
+
+  Future<void> restoreCategory(String id, DateTime updatedAt);
+
+  Future<void> permanentlyDeleteCategory(String id);
 }
