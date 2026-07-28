@@ -11,11 +11,15 @@
 - `assets/`：设计使用的本地图标、图片和字体说明。
 - `reviews/`：设计走查记录和验收清单。
 
+## 设计入口文档
+
+- `UI_HANDOFF.md`：移动端 UI 设计交付文档，交付给 UI/UX 或前端前必须先读。
+
 ## 设计文件索引
 
 | ID | 功能 | 形式 | 版本 | 状态 | 文件 | 关联故事 |
 |---|---|---|---|---|---|---|
-| DESIGN-001 | 链接导入全流程 | 待创建 | v0 | TODO | `flows/`、`wireframes/` | US-004、US-005 |
+| DESIGN-001 | 链接导入全流程 | 待创建 | v0 | TODO | `flows/`、`wireframes/`；入口说明见 `UI_HANDOFF.md` | US-004、US-005 |
 | DESIGN-002 | 首页与菜谱管理 | 待创建 | v0 | TODO | `wireframes/` | US-009 |
 | DESIGN-003 | LLM 与 OCR 设置 | 待创建 | v0 | TODO | `wireframes/` | US-006、US-007、US-008 |
 | DESIGN-004 | 烹饪模式 | 待创建 | v0 | TODO | `wireframes/` | US-010 |
