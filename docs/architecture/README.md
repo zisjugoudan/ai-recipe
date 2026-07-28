@@ -15,12 +15,13 @@
 ## 已有文档
 
 - [移动端架构基线](MOBILE_ARCHITECTURE.md)
+- [Local-first 菜谱数据库契约](LOCAL_DATABASE.md)
 - [OCR Provider 与本地插件方案](OCR_PLUGIN.md)
 - [LLM 自定义 API 与 Provider 适配方案](LOCAL_LLM_NETWORK_SECURITY.md)
 
 ## 计划文档
 
-- `LOCAL_DATA.md`：本地数据库 Schema、迁移和同步元数据。
+- `SYNC_METADATA.md`：同步元数据、变更队列和数据库迁移扩展。
 - `SYNC_ENGINE.md`：增量同步、软删除和冲突处理。
 - `AI_PROVIDER.md`：LLM/ASR Provider 契约。
 - `IMPORT_PIPELINE.md`：导入状态机、缓存和重试。

@@ -47,7 +47,7 @@ Flutter 在本项目的 Local-first 数据库、系统分享、后台任务、�
 | Gemini Adapter | 通过（契约测试） | `generateContent` 请求、角色转换、鉴权和解析通过 | 使用 Gemini 真实服务验证 |
 | 超时与取消 | 通过（本地测试） | Transport 支持超时、请求前取消和请求中取消 | 真机弱网补验 |
 | 安全存储封装 | 部分通过 | 代码使用 `FlutterSecureStorage`，Key 与普通配置分离 | 真机验证保存、覆盖、删除和重装行为 |
-| SQLite | 未验证 | 尚未实现实验 | 写入/读取示例 Recipe |
+| SQLite | 通过 | Schema v1、事务、聚合 Repository、持久化重开和软删除测试通过 | 后续按业务任务扩展导入任务、标签、同步和迁移 |
 | 系统分享 URL | 未验证 | 尚未实现实验 | Android/iOS 接收分享链接 |
 | 后台任务 | 未验证 | 尚未实现实验 | 验证任务恢复、限制和失败场景 |
 | 本地通知 | 未验证 | 尚未实现实验 | 验证权限与任务结果通知 |
@@ -86,8 +86,9 @@ flutter test
 结果：
 
 - `flutter analyze`：`No issues found`。
-- `flutter test`：21 个测试全部通过。
-- 测试没有使用真实 API Key，也没有调用真实 LLM 服务。
+- `flutter test`：27 个测试全部通过，其中新增 6 个 SQLite Repository 测试。
+- SQLite 测试使用真实临时数据库文件，覆盖关闭重开、聚合更新、事务回滚、搜索、收藏、软删除、恢复、永久删除和分类关系清理。
+- LLM 测试没有使用真实 API Key，也没有调用真实 LLM 服务。
 
 Android 构建：
 
@@ -100,19 +101,32 @@ Android 构建：
 
 详细证据见 `tests/acceptance/SPK-001-llm-provider-baseline-2026-07-27.md`。
 
+## 已实施的 Local-first SQLite 基线
+
+实现内容：
+
+- 新增纯 Dart 菜谱领域模型和 Repository 接口，UI 不直接依赖 SQLite。
+- SQLite Schema v1 包含菜谱、食材、步骤、分类和菜谱分类关系。
+- 启用外键与级联删除；菜谱聚合写入使用单一事务。
+- 支持新增/更新、按 ID 读取、列表、文本搜索、收藏筛选、软删除、恢复和永久删除。
+- 支持分类写入、排序读取和软删除；删除分类时清理关系但保留菜谱。
+- 任意子项或分类关系写入失败会回滚整次菜谱保存。
+
+详细设计见 `docs/architecture/LOCAL_DATABASE.md`，验收证据见 `tests/acceptance/SPK-001-local-recipe-database-2026-07-28.md`。
+
 ## 失败与限制
 
 1. Windows Flutter 工具链在仓库绝对路径含中文时存在 shader 输出失败；当前通过纯 ASCII Junction 构建。长期应迁移到纯 ASCII 路径或提供稳定的本地构建入口。
 2. 首次流式 `adb install -r` 超时；`--no-streaming` 安装成功但耗时较长。
 3. Windows 不能验证 iOS 构建、Keychain、本地网络权限和 iPhone 行为。
 4. Provider 测试为可注入 Transport 的本地契约测试，不代表所有真实兼容服务已经通过。
-5. 尚未验证 SQLite、系统分享、后台任务、通知、OCR 桥接和安全存储真机完整流程。
+5. 尚未验证系统分享、后台任务、通知、OCR 桥接和安全存储真机完整流程。
 
 ## 当前结论
 
 **继续研究。**
 
-Flutter 的 LLM Provider/Android 工程切片已通过，没有发现阻止继续开发的业务代码问题；但 `SPK-001` 的数据库、分享、后台任务、通知、安全存储真机流程、OCR 桥接和 iOS 矩阵尚未完成，因此状态保持 `DOING`。
+Flutter 的 LLM Provider、Local-first SQLite 和 Android 工程切片已通过，没有发现阻止继续开发的业务代码问题；但 `SPK-001` 的分享、后台任务、通知、安全存储真机流程、OCR 桥接和 iOS 矩阵尚未完成，因此状态保持 `DOING`。
 
 ## 对产品、架构和排期的影响
 
@@ -123,8 +137,8 @@ Flutter 的 LLM Provider/Android 工程切片已通过，没有发现阻止继�
 
 ## 后续任务
 
-1. `SPK-001`：SQLite 写入/读取 Recipe。
-2. `SPK-001`：系统分享 URL 接收。
+1. `IMPORT-001`：定义链接导入任务状态机、错误、取消、重试、恢复和 SQLite 持久化。
+2. `SPK-001`：系统分享 URL 接收，并将 URL 交给导入任务用例。
 3. `SPK-001`：后台任务、本地通知和安全存储真机写删。
 4. `SPK-001` / `SPK-002`：OCR Federated plugin / Platform Channel 桥接。
 5. `SPK-003`：真实 OpenAI-compatible、Gemini 和本地兼容服务矩阵。

@@ -4,6 +4,16 @@
 
 ## 2026-07-28
 
+### SPK-001 Local-first SQLite 菜谱数据层
+
+- 新增纯 Dart 菜谱、食材、步骤和分类领域模型及 Repository 契约。
+- 新增 SQLite Schema v1，覆盖 `recipes`、`ingredients`、`recipe_steps`、`recipe_categories` 和 `recipe_category_relations`。
+- 菜谱聚合新增/更新使用事务，启用外键和级联删除，无效分类关系会使整次保存回滚。
+- 支持菜谱持久化读取、列表、文本搜索、收藏筛选、软删除、恢复、永久删除，以及分类排序和软删除。
+- 新增 6 个真实 SQLite 临时文件测试；`flutter test` 总计 27 个测试全部通过，`flutter analyze` 无问题。
+- 通过纯 ASCII Junction `C:\tmp\ai-recipe-mobile` 再次完成 Android Debug APK 构建。
+- 新增架构文档 `docs/architecture/LOCAL_DATABASE.md` 和验收记录 `tests/acceptance/SPK-001-local-recipe-database-2026-07-28.md`。
+- `SPK-001` 保持 `DOING`；SQLite 验证项已通过，下一步转入 `IMPORT-001` 后端任务状态机和分享 URL 接入。
 ### GitHub 首次发布
 
 - 新增 `OPS-003`，将本地仓库发布到 GitHub 仓库 `zisjugoudan/ai-recipe`。
