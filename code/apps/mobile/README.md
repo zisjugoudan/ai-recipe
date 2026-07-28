@@ -13,6 +13,7 @@
 - Provider 请求构造、响应解析、配置校验和设置页 Widget 测试。
 - Local-first SQLite Schema v2、菜谱聚合 Repository 和 v1 → v2 迁移。
 - APP-001 菜谱库 Application Facade：手动 CRUD、搜索/收藏/状态/分类筛选、菜谱与分类回收站、稳定错误和游客重开持久化。
+- APP-002 游客/登录会话与能力策略：非敏感会话元数据、八类能力矩阵、稳定不可用原因、SharedPreferences 严格序列化和能力守卫。
 - 可持久化的链接导入任务状态机、Application 用例、取消、重试和重启恢复。
 - IMPORT-002 统一导入内容模型与 JSON Schema。
 - 平台 Adapter Registry、导入 Runner 和单执行器 Dispatcher。
@@ -21,7 +22,7 @@
 - AI-002 受限 Prompt、严格结构化菜谱 Schema、草稿持久化、错误映射和保存提交点。
 - OCR-001 统一 OCR Provider、严格模型 Manifest、OCR 证据字段和导入预处理流水线。
 - ASR-001 统一 ASR Provider、分段时间证据、音视频限制、部分结果和导入预处理流水线。
-- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 176 项测试通过。
+- 当前 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 197 项测试通过。
 
 ## 本地运行
 

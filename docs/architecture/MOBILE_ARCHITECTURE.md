@@ -1,4 +1,4 @@
-# 移动端架构基线（Flutter）
+﻿# 移动端架构基线（Flutter）
 
 - 状态：已生效，后续通过 `SPK-001` 做关键能力实测
 - 日期：2026-07-27
@@ -102,6 +102,16 @@ code/apps/mobile/
 | API Key 云同步 | 默认禁止 | 默认禁止 |
 
 登录是能力升级，不应创建另一套本地数据模型。游客登录后执行身份绑定和增量上传，而不是把本地库替换成云端库。
+### 5.1 已实现的能力策略边界
+
+`APP-002` 已在 `domain/access`、`application/access` 和 `data/device_app_session_repository.dart` 落地：
+
+- 页面通过 `AppAccessUseCases` 获取会话与能力快照，不自行判断权限。
+- SharedPreferences 只保存非敏感身份元数据；Token 必须由未来独立安全认证仓库管理。
+- 自定义 LLM 和本地 OCR 根据运行时状态判定；托管能力先检查登录，再映射网络、配额和服务状态。
+- 登录、退出登录均不删除或自动上传本地菜谱、LLM 配置和 OCR 模型。
+
+详细契约见 `docs/architecture/APP_ACCESS_CAPABILITIES.md`。
 
 ## 6. 平台集成边界
 

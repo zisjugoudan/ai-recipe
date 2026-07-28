@@ -11,7 +11,7 @@ UI 暂缓。当前优先完成 Domain、Application、Data 和 Provider，使后
 
 ## 当前主任务
 
-`APP-002`：实现游客/登录会话与后端能力策略，明确本地菜谱、云保存、平台托管 AI、自定义 LLM API 和 OCR Provider 的可用条件，使页面只依赖统一能力判定，不自行推断登录状态或服务来源。
+`APP-002` 已完成。下一主任务将进入应用后端依赖装配与主功能统一门面的设计，使菜谱库、链接导入、AI 生成、会话和能力策略可以由后续 Flutter 页面通过稳定入口组合调用。
 
 ## 已完成基线
 
@@ -25,8 +25,9 @@ UI 暂缓。当前优先完成 Domain、Application、Data 和 Provider，使后
 - `OCR-001`：统一 OCR Provider、严格模型 Manifest、OCR 证据字段、导入预处理、稳定错误和 Runner 集成。
 - `ASR-001`：统一 ASR Provider、分段时间证据、媒体限制、部分结果、稳定错误和 Runner 集成。
 - `APP-001`：菜谱与分类 CRUD、搜索/收藏/状态/分类筛选、回收站生命周期、稳定错误和游客 SQLite 重开持久化。
+- `APP-002`：游客/登录非敏感会话、八类能力矩阵、稳定原因码、SharedPreferences 严格序列化和能力守卫。
 - Android Debug APK 已通过 ASCII Junction 构建，并在 Android 12 真机安装启动。
-- 最近一次自动化验证：`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 176 项测试通过；3 份 JSON Schema 通过 Draft 2020-12 元 Schema 校验。
+- 最近一次自动化验证：`flutter analyze --no-pub` 无问题，`flutter test --no-pub` 共 197 项测试通过；3 份 JSON Schema 通过 Draft 2020-12 元 Schema 校验。
 
 ## 当前实施边界
 
@@ -39,11 +40,11 @@ UI 暂缓。当前优先完成 Domain、Application、Data 和 Provider，使后
 
 ## 下一步
 
-1. 定义游客与登录会话的纯 Dart 状态模型和持久化边界。
-2. 定义本地手动菜谱、自定义 LLM API、平台托管 AI、云 OCR 与云保存的能力矩阵。
-3. 创建 `APP-002` 架构文档和可执行验收记录，再进入实现。
-4. 实现供 Application 与后续页面调用的统一能力策略，不实现登录页面或其他 UI。
-5. 保持真实 OCR/ASR 原生或云 Provider 为独立 Spike，不阻塞能力策略。
+1. 建立下一任务的后端组合根与统一门面契约，不进入 UI 实现。
+2. 将现有菜谱库、链接导入、OCR/ASR、LLM 生成、会话与能力策略按稳定接口装配。
+3. 明确游客自定义 LLM、本地 OCR 与登录托管服务的 Provider 选择和失败降级。
+4. 为核心链路补充端到端 Application 测试，再交给 Flutter 页面依赖。
+5. 登录协议、Token 安全仓库、真实云同步和真实 OCR/ASR Provider 继续独立排期。
 
 ## 暂停项
 
