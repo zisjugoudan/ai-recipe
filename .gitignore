@@ -1,0 +1,79 @@
+﻿# Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.mobileprovision
+credentials*.json
+secrets/
+
+# Local databases and user data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+local-data/
+user-data/
+
+# Downloaded models and temporary media
+models/
+downloads/
+temp/
+*.onnx
+*.tflite
+*.gguf
+*.bin
+
+# JavaScript / backend tooling
+node_modules/
+.npm/
+.yarn/
+.pnpm-store/
+dist/
+build/
+coverage/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/ios/Pods/
+**/ios/.symlinks/
+**/android/.gradle/
+
+# Native build outputs
+DerivedData/
+.gradle/
+*.xcuserstate
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+# Flutter platform-local generated files
+**/android/local.properties
+**/android/key.properties
+**/android/app/*.jks
+**/android/app/*.keystore
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+
+# Test and tool caches
+.pytest_cache/
+__pycache__/
+*.pyc
