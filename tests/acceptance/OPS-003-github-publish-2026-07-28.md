@@ -34,4 +34,4 @@ git push
 
 ## 后续修订记录
 
-- **2026-09-18（OPS-005）**：为公开仓库做脱敏时，全部历史提交的作者与提交者邮箱由 `2282781933@qq.com` 改写为 GitHub noreply 地址 `83538532+zisjugoudan@users.noreply.github.com`，因此本记录中引用的根提交 SHA `df55ef4` 已失效，新的根提交为 `5d1e326 chore: initialize AI recipe project`。提交内容与提交时间未变，仅邮箱字段被改写。改写前的历史保留在本地分支 `backup/pre-email-desensitize`，未推送到远程。详见 ADR-0043。
+- **2026-09-18（OPS-005）**：为公开仓库做脱敏时，全部历史提交的作者与提交者邮箱由项目负责人原 QQ 邮箱（为避免二次暴露，此处不再记录原值）改写为 GitHub noreply 地址 `83538532+zisjugoudan@users.noreply.github.com`，因此本记录中引用的根提交 SHA `df55ef4` 已失效，新的根提交为 `5d1e326 chore: initialize AI recipe project`。提交内容与提交时间未变，仅邮箱字段被改写。改写前的历史保留在本地分支 `backup/pre-email-desensitize`，未推送到远程。详见 ADR-0043。

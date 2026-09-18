@@ -32,7 +32,7 @@
 | `tracking/DECISIONS.md` | 新增 ADR-0043 |
 | `tracking/CURRENT.md`、`tracking/CHANGELOG.md` | 记录本轮进度与变更 |
 | `tests/acceptance/OPS-003-github-publish-2026-07-28.md` | 追加修订说明：根提交 SHA 因邮箱改写而失效 |
-| git 历史（全部 20 个提交） | 作者/提交者邮箱由 `2282781933@qq.com` 改写为 GitHub noreply 地址 |
+| git 历史（全部 20 个提交） | 作者/提交者邮箱由项目负责人原 QQ 邮箱（原值不在仓库内记录）改写为 GitHub noreply 地址 |
 
 ## 验收步骤与预期结果
 
@@ -109,7 +109,7 @@ curl -s https://api.github.com/repos/zisjugoudan/ai-recipe | grep -E '"(private|
 git log --format='%ae | %ce' | sort | uniq -c
 ```
 
-预期：只出现 `83538532+zisjugoudan@users.noreply.github.com`，不再出现 `2282781933@qq.com`。
+预期：只出现 `83538532+zisjugoudan@users.noreply.github.com`，不再出现任何个人邮箱。原值只存在于本地备份分支 `backup/pre-email-desensitize` 的提交记录中，不在仓库内容里。
 
 ```bash
 git diff backup/pre-email-desensitize main --stat
@@ -128,6 +128,19 @@ cat code/apps/mobile/assets/payment/README.md
 ```
 
 预期：能读到补齐说明；`code/apps/mobile/assets/payment/` 下只有 `README.md`。
+
+## 执行结果（Codex 本轮已执行，供项目负责人复核）
+
+| 项目 | 实际结果 |
+|---|---|
+| 提交分组 | 5 个主题提交：脱敏配置 → 文档与验收 → 设计资产 → 应用实现（含测试） → 原生与资产与构建配置 |
+| 推送方式 | 因历史改写，使用 `git push --force-with-lease origin main`；首次因大数据量断连，调整 `http.postBuffer`/`http.version`/`http.lowSpeedTime` 后成功 |
+| 推送结果 | `+ 32a0583...3747a14 main -> main (forced update)` |
+| 远端文件总数 | 660 |
+| 远端脱敏校验 | `git ls-tree -r origin/main` 中不含收款码、群二维码、`视频剪辑/`、`*.hprof`、`.tmp/`、`.trae/`、`.workbuddy` |
+| 提交邮箱 | 全部提交作者与提交者均为 `83538532+zisjugoudan@users.noreply.github.com` |
+| 仓库可见性 | GitHub API 返回 `"private": false`、`"visibility": "public"`；匿名访问仓库页面返回 `Public` 标记；`raw.githubusercontent.com` 匿名读取 `README.md` 与 `.gitignore` 均返回 200 |
+| 本地备份 | 分支 `backup/pre-email-desensitize` 保留改写前的历史（含旧邮箱），未推送，待项目负责人确认后可删除 |
 
 ## 需要回传的结果
 
