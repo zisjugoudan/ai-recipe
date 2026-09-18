@@ -31,6 +31,8 @@
 | `tracking/BACKLOG.md` | 新增 `OPS-005` 任务 |
 | `tracking/DECISIONS.md` | 新增 ADR-0043 |
 | `tracking/CURRENT.md`、`tracking/CHANGELOG.md` | 记录本轮进度与变更 |
+| `tests/acceptance/OPS-003-github-publish-2026-07-28.md` | 追加修订说明：根提交 SHA 因邮箱改写而失效 |
+| git 历史（全部 20 个提交） | 作者/提交者邮箱由 `2282781933@qq.com` 改写为 GitHub noreply 地址 |
 
 ## 验收步骤与预期结果
 
@@ -47,7 +49,7 @@ git check-ignore -v \
   "code/apps/mobile/assets/payment/alipay_qr.jpg" \
   "code/apps/mobile/assets/community/qq_group.jpg" \
   "视频剪辑/原始素材/b站.mp4" \
-  "code/apps/mobile/android/java_pid38854.hprof" \
+  "code/apps/mobile/android/java_pid38884.hprof" \
   ".tmp/bug002-add-page.png" \
   ".trae/documents/home-icons-plan.md" \
   "design/.workbuddy/memory/2026-08-04.md"
@@ -101,7 +103,21 @@ curl -s https://api.github.com/repos/zisjugoudan/ai-recipe | grep -E '"(private|
 
 预期：`"private": false`、`"visibility": "public"`。匿名（未登录浏览器）打开仓库首页可正常看到文件列表。
 
-### 步骤 6：确认克隆补齐流程可用
+### 步骤 6：确认提交者身份已脱敏
+
+```bash
+git log --format='%ae | %ce' | sort | uniq -c
+```
+
+预期：只出现 `83538532+zisjugoudan@users.noreply.github.com`，不再出现 `2282781933@qq.com`。
+
+```bash
+git diff backup/pre-email-desensitize main --stat
+```
+
+预期：无输出（说明改写只动了邮箱字段，提交内容未变）。该分支为本地备份，不会推送。
+
+### 步骤 7：确认克隆补齐流程可用
 
 在空目录执行：
 
@@ -122,8 +138,10 @@ cat code/apps/mobile/assets/payment/README.md
 3. 步骤 3 的 `origin/main` 最新 3 条提交，以及 `git status -sb` 的同步状态。
 4. 步骤 4 的输出（无输出即为通过）。
 5. 步骤 5 的 `private`/`visibility` 字段值，以及匿名访问仓库首页是否可见。
-6. 步骤 6 的克隆结果。
-7. 明确结论：是否接受「全新克隆需手动补齐三个私有资产才能构建」这一代价；若不接受，请说明希望改用哪种替代方案。
+6. 步骤 6 的邮箱统计与 `git diff` 输出。
+7. 步骤 7 的克隆结果。
+8. 明确结论：是否接受「全新克隆需手动补齐三个私有资产才能构建」这一代价；若不接受，请说明希望改用哪种替代方案。
+9. 明确结论：是否确认邮箱改写结果无误、可以删除本地备份分支 `backup/pre-email-desensitize`；如不希望保留 noreply 邮箱，请说明希望改回或改用哪个地址。
 
 ## 边界说明
 
