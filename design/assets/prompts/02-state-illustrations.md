@@ -1,0 +1,207 @@
+# P0 状态插图 · Image 2 完整提示词
+
+> 正式产品名称：巴食
+> 版本：v1.3 / 2026-08-10
+> 位置/场景：首页、菜谱库、冰箱、推荐、导入、离线、权限、AI 草稿、备份、烹饪完成
+> 规则：每条都是可独立复制的完整 Prompt，不需要再拼接母版。
+> 本文件 12 项全部为非品牌状态插图，只使用功能物体、小场景和符号；禁止官方 IP 与任何角色。
+
+## 使用前准备
+
+- **不要上传、不要参考 `IP.png` 或 `封面图.png`**。状态图与品牌角色完全解耦。
+- 只上传一张当前「巴食」UI 截图或只包含正式色板、像素切角、描边与硬投影的风格卡。
+- 每张图只表达一个核心状态；状态标题、说明、按钮和重试入口全部由 Flutter 渲染。
+- 生成一图一资产；不要一次生成 icon grid、sprite sheet 或多版本拼图。
+- 上一版含角色方向已退役；正式候选只使用本文件的 v1.3 Prompt。
+
+## 1. 首页无菜谱 `state-home-empty-v1.png`
+
+```text
+用途：「巴食」移动端的“首页无菜谱”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-home-empty-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一只完全正视的空浅色碗、一张闭合菜谱卡，以及菜谱卡右上角一枚深绿色小加号方块。三者组成一个紧凑的水平小场景，菜谱卡略高于碗但不遮挡，表达“还没有菜谱，可以添加第一道菜”；不要表现失败、损坏或悲伤。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 2. 菜谱库搜索无结果 `state-library-no-result-v1.png`
+
+```text
+用途：「巴食」移动端的“菜谱库搜索无结果”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-library-no-result-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一本完全正视的闭合菜谱册与一枚正视放大镜紧密组合；放大镜中心保持空白，菜谱册封面只用两三条无文字的像素短线。表达“搜索完成但没有匹配结果”，不要红叉、问号或破损书本。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 3. 冰箱无库存 `state-fridge-empty-v1.png`
+
+```text
+用途：「巴食」移动端的“冰箱无库存”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-fridge-empty-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一个完全正视的双门冰箱正交剖面：上层门板以纯平面方式平移到两侧，不显示侧面、顶面、铰链透视或门体厚度；柜内两层空搁板清楚。门边放一枚小叶片或带绿色加号的食材盒，表达“冰箱暂无库存，可以添加食材”，不要厨房背景、损坏符号或人物。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 4. 冰箱筛选无结果 `state-fridge-filter-empty-v1.png`
+
+```text
+用途：「巴食」移动端的“冰箱筛选无结果”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-fridge-filter-empty-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一个完全正视的空冰箱抽屉与一枚小型漏斗符号，抽屉内部保持空白；漏斗位于右上方且不遮挡抽屉。表达“当前筛选条件下无食材”，不要画完整冰箱、红叉或角色。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 5. 推荐无匹配 `state-recommend-none-v1.png`
+
+```text
+用途：「巴食」移动端的“推荐无匹配”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-recommend-none-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一只完全正视的小锅、三枚分散的食材方块、两段未闭合的短连接线与一个空槽方块。表达“现有食材暂时无法组成推荐菜谱”；连接关系未闭合但不要使用红叉、警报或失败爆炸。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 6. 导入失败 `state-import-failed-v1.png`
+
+```text
+用途：「巴食」移动端的“导入失败”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-import-failed-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一张完整未损坏的菜谱卡、一枚断开的链环符号和一枚低饱和红色感叹方块。三者清晰分离，表达“链接或内容导入失败，可以重试或改用其他方式”；不要把卡片撕碎、烧毁或画平台 Logo。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 7. 弱网 / 离线 `state-offline-v1.png`
+
+```text
+用途：「巴食」移动端的“弱网 / 离线”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-offline-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一朵正视像素云、两段断开的短连接线、一张完好的本地菜谱卡和一枚小型深绿色盾牌。表达“当前离线，但本地内容仍安全可用”；不要 Wi-Fi 品牌符号、人物或灾难氛围。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 8. 相机 / 相册权限拒绝 `state-permission-denied-v1.png`
+
+```text
+用途：「巴食」移动端的“相机 / 相册权限拒绝”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-permission-denied-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一台完全正视的简化相机、一枚浅色盾牌和盾牌中央一条短横杠。表达“相机或相册权限未开放”；相机保持完好，不要锁链、人物、手掌或惊恐表情。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 9. AI 草稿待确认 `state-ai-draft-review-v1.png`
+
+```text
+用途：「巴食」移动端的“AI 草稿待确认”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-ai-draft-review-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一张完全正视的菜谱纸，内部用三个无文字实色区块表示标题、食材和步骤；纸张旁有两枚绿色方块星点和一个琥珀色未确认方块。表达“AI 已生成结构化草稿，仍有字段需要确认”；不要机器人、头像、对话气泡或角色。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 10. 无备份记录 `state-backup-empty-v1.png`
+
+```text
+用途：「巴食」移动端的“无备份记录”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-backup-empty-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一个完全正视、打开的空归档盒与一张空白菜谱卡；菜谱卡停在盒口上方但未放入。表达“目前没有备份记录”；不要云端人物、红叉或损坏文件。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 11. 备份成功 `state-backup-success-v1.png`
+
+```text
+用途：「巴食」移动端的“备份成功”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-backup-success-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一个完全正视的关闭归档盒，盒口露出一张完好菜谱卡；右上方是一枚深绿色勾形符号，并配两个克制的方块星点。表达“备份已经完成”；不要角色、庆典烟花或奖杯。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```
+
+## 12. 烹饪完成 `state-cooking-complete-v1.png`
+
+```text
+用途：「巴食」移动端的“烹饪完成”状态插图，放在标题与操作按钮附近，核心语义必须在 3 秒内可理解。
+资产文件名：`state-cooking-complete-v1.png`。
+参考图与优先级：不要上传、不要参考 `IP.png` 或 `封面图.png`。如附带「巴食」当前 UI 截图或 UI 色板卡，只学习其颜色、像素密度、阶梯缺角、深墨绿描边与右下硬投影；不要复制截图里的文字、状态栏、按钮或页面布局。Rendering priority: 巴食 UI style and strict pixel constraints > functional object semantics。
+主要请求：一只完全正视的浅色餐盘，盘内只有几块低饱和家常菜实色块，盘上升起两缕方块蒸汽；右上方是一枚深绿色勾形符号和三个克制星点。表达“菜已完成，可以享用”；不要手、人物、厨师、奖杯或烟花。
+渲染风格：strict flat 2D pixel art；true hard-edged square pixels；nearest-neighbor pixel rendering；limited palette；solid color blocks；no smooth transitions between colors。使用 96×64 logical pixel grid，只按整数倍最近邻放大；所有弧线由清楚的方形像素台阶构成；禁止亚像素曲线、半透明边缘和平滑抗锯齿。完全正视或平视正交，front-facing orthographic，no perspective depth，no environmental lighting。
+UI 一致性：匹配「巴食」现有 UI 的 8→4→3 逻辑像素阶梯缺角、2 logical pixel 深墨绿硬描边和主体右下 2–3 logical pixel 单色硬投影。只用实色块，不做圆润矢量曲线；画面低饱和、安静、温暖、现代。
+正式色板：#F3F1E9、#EAE7DC、#FCFBF6、#F5F2E9、#36403A、#5F6A63、#8F978F、#5F8F6E、#476B52、#33513C、#DDE7DC、#EDF2EA、#B08D4F、#AF6859、#6E8697、#DDD8C9、#CFC9B6。只从这些颜色中选取，整张通常控制在 4–7 色；每个表面最多基础色、一个硬阴影色和一个可选硬高光色。
+构图：1536×1024 横向画布，一个紧凑的纯物体状态小场景居中，占画布约 56–64%，左右和上下留白充足；不画完整房间、地面线或环境。
+背景：完全均匀的纯 #FF00FF chroma-key 背景，无渐变、无纹理、无地面、无反射、无环境阴影；主体内部禁止使用洋红色或接近 #FF00FF 的颜色。生成后本地去背，保留主体右下硬边投影。
+反向约束：no 3D, no isometric, no three-quarter view, no side face, no top face, no thickness, no depth, no clay render, no glossy plastic, no bevel, no extrusion, no realistic lighting, no volumetric lighting, no ambient occlusion, no soft shadow, no gradient, no material, no texture, no airbrush, no painterly shading, no watercolor, no smooth antialiasing, no soft rounded vector illustration, no sticker outline, no emoji, no blur, no cinematic depth of field, no photorealism。不得出现水豚、人物、厨师、厨师帽、墨镜、脸、眼睛、嘴、手、脚、四肢、拟人姿态、拟人表情、吉祥物、角色轮廓或任何 IP 特征。不得出现文字、汉字、字母、数字、水印、签名、品牌字样、第三方 Logo、设备框、按钮、页面截图、icon grid、sprite sheet 或多版本拼图。
+输出要求：只输出一张最终资产，不输出说明文字。生成后以最近邻方式检查 96px、64px、48px；若功能语义不清、轮廓粘连、出现任何角色特征，或仍显立体、圆润、柔滑，直接淘汰并按本 Prompt 重新生成，不要对 3D / 柔滑结果叠加像素滤镜。
+```

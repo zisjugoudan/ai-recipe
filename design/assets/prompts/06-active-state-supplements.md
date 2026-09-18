@@ -1,0 +1,98 @@
+# 交互图标激活态补充规范
+
+> 任务：DESIGN-008  
+> 版本：v1.3 / 2026-08-10  
+> 范围：底部导航双状态 + 默认分类双状态  
+> 原则：只有需要长期保持“当前选中”的图片资产才制作独立 active 图；所有导航与分类图片均禁止 IP；短暂反馈和控件状态由 Flutter 绘制
+
+## 1. 哪些资产需要独立激活态
+
+| 资产组 | 是否制作 active | 状态分工 |
+|---|---|---|
+| 底部导航：首页、菜谱库、冰箱、我的 | 是，`default` / `active` | 图片负责 outline / filled 的 glyph 差异；Flutter 负责选中容器、边框、文字和点击反馈 |
+| 默认分类 12 项 | 是，`default` / `active` | 图片负责主体色彩权重变化；Flutter 负责选中卡片背景与边框 |
+| 品牌资产 | 否 | 品牌标识不是可选控件 |
+| 状态插图 | 否 | 每张插图本身已经表达空、加载、成功或错误等页面状态 |
+| 功能入口图标 | 否 | pressed、busy、disabled、focus 等短暂交互状态由 Flutter 统一处理 |
+| 冰箱分区、库存与推荐图标 | 否 | 选中、缺失、数量和推荐等级由卡片、文字、标签与原生箭头表达 |
+| 返回、关闭、收藏、勾选、删除、箭头、开关等 16–24px 操作符号 | 否 | 继续使用 Flutter 原生图标及组件状态，不生成图片版本 |
+
+## 2. 底部导航双状态
+
+完整 Prompt 见 [00-bottom-navigation-icons.md](./00-bottom-navigation-icons.md)。最终需要 8 枚单图：
+
+- `nav-home-default-v1.png` / `nav-home-active-v1.png`
+- `nav-library-default-v1.png` / `nav-library-active-v1.png`
+- `nav-fridge-default-v1.png` / `nav-fridge-active-v1.png`
+- `nav-profile-default-v1.png` / `nav-profile-active-v1.png`
+
+## 3. 分类图标 active 通用编辑 Prompt
+
+### 使用方式
+
+1. 不上传、不参考 `IP.png` 或 `封面图.png`；先使用 [05-category-icons.md](./05-category-icons.md) 中对应分类的完整 Prompt 生成并通过无 IP 的 default 图。
+2. 将**已通过的同一张 default 原图**作为 Image 1（编辑目标）上传给 Image 2。
+3. 把下方 `{分类名}`、`{默认文件名}`、`{激活文件名}` 替换为实际值。
+4. active 必须是对 default 的颜色权重编辑，禁止按分类名从零重画。
+
+```text
+用途：把「巴食」默认分类“{分类名}”图标编辑为同一图标的 active / 选中态。
+
+Image 1：`{默认文件名}`，这是唯一编辑目标；它必须是已通过验收的无 IP 纯物体 / 食材分类图。不要上传 `IP.png` 或其他角色参考。
+目标文件名：`{激活文件名}`。
+
+只改变图标主体内部的颜色权重，其他全部保持像素级不变：
+- 保持完全相同的外轮廓、像素矩阵、构图、主体数量、姿态、比例、位置、重心和基线。
+- 保持完全相同的 2 logical pixel 深墨绿描边。
+- 保持完全相同的 2–3 logical pixel 右下单色硬投影。
+- 保持完全相同的透明区域和安全留白。
+- 不新增、不删除、不移动任何物体、装饰、蒸汽、食材或细节。
+
+active 状态只做以下颜色调整：
+- 将主体中可代表主要结构或选中强调的区域提高为正式深绿色 #476B52；最深结构可使用 #33513C。
+- 可将原本次要的 #5F8F6E 绿色区域适度加深，但不得把整枚图标涂成单色绿块。
+- 原有语义色如 #B08D4F、#AF6859、#6E8697、米白与纸张色可以保留，避免食物身份丢失；仅降低其视觉权重，使深绿色成为第一识别色。
+- active 与 default 的差异必须在 40px 下可见，但仍明显是同一枚图标。
+
+不要加入选中卡片、背景底板、描边框、对勾、光圈、发光、角标、文字或额外投影。选中卡片背景 #DDE7DC、选中边框 #476B52、标签颜色和点击反馈均由 Flutter 绘制。
+
+角色与品牌约束：no capybara, no person, no chef, no chef hat, no sunglasses, no face, no eyes, no mouth, no hands, no feet, no limbs, no mascot, no character silhouette, no anthropomorphic pose, no anthropomorphic expression, no IP features.
+
+像素约束：strict flat 2D pixel art, hard-edged square pixels, nearest-neighbor rendering, no antialiasing, no gradient, no soft shadow, no lighting, no material, no 3D, no perspective, no isometric, no bevel, no extrusion, no glossy surface, no texture, no blur, no sticker, no emoji, no added objects, no composition change.
+
+输出要求：只输出一张 active 图标；不要输出前后对比、网格、说明文字或 UI mockup。如果无法保持 Image 1 的轮廓和像素位置不变，就不要重画。
+```
+
+## 4. 十二组分类文件名
+
+| 分类 | Default | Active |
+|---|---|---|
+| 家常菜 | `category-home-cooking-v1.png` | `category-home-cooking-active-v1.png` |
+| 快手菜 | `category-quick-v1.png` | `category-quick-active-v1.png` |
+| 早餐 | `category-breakfast-v1.png` | `category-breakfast-active-v1.png` |
+| 主食 | `category-staple-v1.png` | `category-staple-active-v1.png` |
+| 汤羹 | `category-soup-v1.png` | `category-soup-active-v1.png` |
+| 烘焙 | `category-baking-v1.png` | `category-baking-active-v1.png` |
+| 甜品 | `category-dessert-v1.png` | `category-dessert-active-v1.png` |
+| 饮品 | `category-drink-v1.png` | `category-drink-active-v1.png` |
+| 素菜 | `category-vegetarian-v1.png` | `category-vegetarian-active-v1.png` |
+| 肉类 | `category-meat-v1.png` | `category-meat-active-v1.png` |
+| 水产 | `category-seafood-v1.png` | `category-seafood-active-v1.png` |
+| 轻食 | `category-light-v1.png` | `category-light-active-v1.png` |
+
+## 5. 首轮只验证早餐一组
+
+先生成并叠放比较：
+
+1. `category-breakfast-v1.png`
+2. `category-breakfast-active-v1.png`
+
+验收重点：
+
+- 50% 透明叠放时，外轮廓、吐司、煎蛋、投影、基线和留白必须完全重合。
+- 只能看到颜色权重变化，不能看到重画造成的双边、位移或比例漂移。
+- active 在 40px 下比 default 更突出，但不能变成整块深绿剪影。
+- 两张图都不能包含 `#DDE7DC` 选中底板、边框、对勾、光圈或新增投影。
+- 两张图都不得出现水豚、人物、厨师、脸、手脚、拟人姿态、吉祥物或任何 IP 特征。
+
+早餐双状态通过后，再用同一编辑 Prompt 批量制作其余 11 组。

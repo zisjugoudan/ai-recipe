@@ -1,4 +1,4 @@
-﻿# 设计目录与交付规则
+# 设计目录与交付规则
 
 > 本目录是 UI/UX 的本地事实源。设计可以是图片，也可以是可离线运行的 HTML，不依赖 Figma 或其他云平台。
 
@@ -19,10 +19,14 @@
 
 | ID | 功能 | 形式 | 版本 | 状态 | 文件 | 关联故事 |
 |---|---|---|---|---|---|---|
-| DESIGN-001 | 链接导入全流程 | 待创建 | v0 | TODO | `flows/`、`wireframes/`；入口说明见 `UI_HANDOFF.md` | US-004、US-005 |
-| DESIGN-002 | 首页与菜谱管理 | 待创建 | v0 | TODO | `wireframes/` | US-009 |
-| DESIGN-003 | LLM 与 OCR 设置 | 待创建 | v0 | TODO | `wireframes/` | US-006、US-007、US-008 |
-| DESIGN-004 | 烹饪模式 | 待创建 | v0 | TODO | `wireframes/` | US-010 |
+| DESIGN-001 | 链接导入全流程 | HTML 原型 | v0 | 待走查 | `prototypes/index.html`（添加入口、链接导入、解析进度、失败降级、草稿确认） | US-004、US-005 |
+| DESIGN-002 | 首页与菜谱管理 | HTML 原型 | v0 | 待走查 | `prototypes/index.html`（首页默认/空态、菜谱库、详情、编辑） | US-009 |
+| DESIGN-003 | LLM 与 OCR 设置 | HTML 原型 | v0 | 待走查 | `prototypes/index.html`（我的、LLM API 设置、OCR 设置） | US-006、US-007、US-008 |
+| DESIGN-004 | 烹饪模式 | HTML 原型 | v0 | 待走查 | `prototypes/index.html`（步骤大卡、多计时器、退出确认） | US-010 |
+| DESIGN-005 | 冰箱与按食材推荐 | 流程文档 + HTML 原型 | v0 | 待走查 | `flows/FRIDGE_AND_RECOMMENDATION_FLOW.md`、`prototypes/index.html`（四栏导航、库存批次、筛选、推荐分组、扣减确认） | US-011、US-012、US-013 |
+| DESIGN-006 | 冰箱拖拽与逐格冷冻动效 | 交互交接文档 | v0 | 待实施 | `flows/FRIDGE_DRAG_AND_FROST_ANIMATION_HANDOFF.md`（拖拽状态机、提交边界、二维逐格动画、失败与减少动态） | US-011 |
+| DESIGN-007 | 全量菜谱备份与恢复 | 流程文档 | v0 | 待走查 | `flows/RECIPE_BACKUP_RESTORE_FLOW.md` | US-014 |
+| DESIGN-008 | Image 2 图标与美术资产提示词 | 提示词规范 | v0 | 待走查 | `assets/IMAGE2_ICON_PROMPTS.md` | 全局 UI 美术资产 |
 
 ## 固定交付要求
 
