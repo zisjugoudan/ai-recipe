@@ -1,8 +1,8 @@
-﻿# 结构化菜谱生成 Processor
+# 结构化菜谱生成 Processor
 
-> 任务：`AI-002`  
-> 状态：已完成  
-> 日期：2026-07-28
+> 任务：`AI-002`、`AI-003`
+> 状态：Processor 已完成；唯一 JSON 提取与第三方兼容响应加固实施中
+> 最后更新：2026-08-02
 
 ## 1. 目标
 
@@ -25,7 +25,7 @@ ImportContent
 
 - 使用 `ImportContent.title`、`description` 和 `textFragments` 作为模型输入。
 - 支持 OpenAI-compatible 与 Gemini native 共用现有 `LlmProvider`。
-- 支持纯 JSON 和单个 Markdown fenced JSON 响应。
+- 支持纯 JSON、单个 Markdown fenced JSON，以及 `AI-003` 允许列表中的受控包装响应。
 - 严格校验 `docs/api/recipe-generation.schema.json`。
 - 本地生成菜谱、食材、步骤 ID、时间戳、状态和版本。
 - 将草稿写入 `RecipeRepository`，返回菜谱 ID。
@@ -59,7 +59,28 @@ ImportContent
 - 至少一个非空描述的 `steps`
 
 置信度必须位于 `0..1`。时长、份量和时间必须是非负整数并受 Schema 上限约束。步骤编号、排序和所有 ID 不信任模型输出，由本地按数组顺序生成。
+### 5.1 `AI-003` / `BUG-003` 响应规范化边界
 
+Schema 校验前只允许执行“安全唯一 JSON 载荷提取”，用于兼容第三方 OpenAI-compatible 模型在正确 JSON 外包裹简短说明的常见行为。该层只负责确定唯一对象边界，不修复 JSON、不补字段、不放宽菜谱 Schema。
+
+处理顺序固定为：
+
+1. 先拒绝空响应和超过字符上限的响应。
+2. 允许最终 JSON 之前存在一个完整闭合的 `<think>...</think>` 前缀；推理内容受独立大小限制，标签不得重复、嵌套或缺失闭合。
+3. 在剩余文本中按字符扫描 JSON 字符串、反斜杠转义与 `{}` 层级，提取唯一一个完整顶层 JSON 对象；JSON 字符串内部的花括号和转义引号不得改变对象边界。
+4. 允许唯一对象前后存在普通说明文字，也允许对象位于唯一一个空语言或 `json` Markdown fence 中。
+5. 出现第二个完整或未闭合对象、第二组 fence、单个未闭合 fence、对象花括号不平衡或无法确定唯一对象时必须拒绝。
+6. 提取出的对象仍由 `jsonDecode` 完整消费，并继续执行根对象、食材对象、步骤对象的未知字段拒绝、必填字段、类型、范围、数组长度和领域模型校验。
+7. OpenAI-compatible Provider 若报告 `finish_reason = length`，或 `message.content` 为空白，必须在进入 Schema Parser 前映射为稳定的 `invalidResponse`，不得把截断内容误报为普通字段错误。
+
+必须拒绝并映射为稳定错误的情况包括：
+
+- 多个 JSON 对象、多个 fenced 块或无法唯一确定最终对象的内容。
+- 未闭合、重复或嵌套的推理标签。
+- 截断 JSON、对象花括号不平衡、语法错误 JSON、超大响应。
+- 缺字段、未知字段、错误类型、越界值和模型试图设置本地字段。
+
+兼容层不得使用“第一个 `{` 到最后一个 `}`”的贪婪截取，不得写日志保存原始响应，也不得在异常中拼接响应片段。Prompt、API Key、Authorization 和完整模型响应继续遵守既有脱敏规则。
 ## 6. 本地字段规则
 
 | Recipe 字段 | 来源 |
@@ -89,12 +110,16 @@ ImportContent
 
 所有错误文案必须稳定、简短且脱敏，不回传完整模型响应。
 
-## 8. 保存提交点与取消语义
+## 8. 保存提交点、CAS 与取消语义
 
-- 在调用 `RecipeRepository.upsertRecipe` 前进行最后一次取消检查。
-- Repository 保存成功且 Processor 返回后，视为本次草稿生成的提交点。
-- 提交点之后 Runner 不再把任务改写为 `cancelled`，而是继续进入 `needsReview`。
-- 该规则保证不会出现“草稿已经持久化，但导入任务被取消并失去草稿引用”的孤立数据。
+- Processor 在 `RecipeRepository.upsertRecipe` 前执行取消检查，减少无意义写入。
+- 草稿保存成功只是 Recipe 聚合的提交点，不代表导入任务已经进入 `needsReview`；Runner 仍需使用读取时的 `localVersion` 原子提交任务结果。
+- 如果 `needsReview` 提交前持久化取消已经获胜，Runner 返回取消结果，并调用安全草稿丢弃器清理迟到草稿。
+- 如果失败处理开始前任务已经持久化为取消，后到的 Schema、网络、超时、Provider 或未知错误不得改写取消状态。
+- 安全草稿丢弃器只删除结果 ID、来源匹配且仍为 `RecipeStatus.draft` 的菜谱；正式菜谱或被其他流程接管的数据不得删除。
+- CAS 冲突后必须重新读取任务再决定取消、返回最新状态或报告冲突，不能依赖旧内存快照。
+
+因此最终一致性规则是：任务取消优先；迟到草稿可补偿；已发布菜谱不可被补偿清理。
 
 ## 9. 扩展点
 
@@ -104,7 +129,8 @@ ImportContent
 
 - Prompt、Schema Parser、Processor 和 Runner 集成测试通过。
 - 标题-only + `requiresOcr` / `requiresAsr` 防幻觉测试通过。
-- 保存完成后取消到达的提交点竞态测试通过。
-- 真实 SQLite 文件关闭并重新打开后，Recipe、Ingredient 和 Step 草稿仍可读取。
-- `flutter analyze --no-pub` 无问题。
-- `flutter test --no-pub` 共 113 项测试通过。
+- `AI-003` 覆盖纯 JSON、单一 JSON fence、受控短前言、完整闭合推理前缀和歧义包装拒绝；严格 Schema 和脱敏边界未放宽。
+- 真实 OpenAI-compatible 纯文本服务已生成结构化草稿，进入 `needsReview` 并通过 SQLite 重开恢复。
+- 取消优先于后到 Schema 错误或成功，迟到草稿补偿删除的 SQLite 集成测试通过。
+- 相关定向测试 53 项全部通过；`flutter analyze --no-pub` 无问题；Flutter 全量测试 475 项全部通过。
+- Android 运行态取消入口的源码修复已完成；按项目负责人要求，本轮未运行新的分析、测试或 Android 构建，真实点击、迟到响应和重启持久化仍待人工验收。详见 `tests/acceptance/BUG-002-import-cancellation-race-2026-08-01.md`。

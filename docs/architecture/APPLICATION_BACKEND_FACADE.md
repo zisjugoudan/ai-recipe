@@ -1,8 +1,8 @@
-﻿# 应用后端组合根与主功能统一门面
+# 应用后端组合根与主功能统一门面
 
 > 任务：`APP-003`
 > 状态：已完成
-> 最后更新：2026-07-28
+> 最后更新：2026-08-02
 
 ## 1. 目标
 
@@ -55,6 +55,8 @@ createImportTask
 getImportTask
 listImportTasks
 runImportTask
+runImportWithPastedText
+runImportWithLocalImage
 dispatchPendingImports
 cancelImportTask
 retryImportTask
@@ -92,6 +94,7 @@ enum ImportAsrRoute { disabled, managed }
 | 托管 ASR | `managedAsr` |
 
 能力校验不能依赖 UI 是否隐藏按钮；所有执行入口必须再次校验。
+本地图片降级入口 `runImportWithLocalImage` 仅用于失败或已取消任务，接受应用可读取的本地图片资源标识和可选 MIME，强制装配 `ImportOcrRoute.local`，然后复用统一 OCR → LLM → 草稿流水线。它不会切换到云 OCR，也不会把本地绝对路径写入错误消息或业务日志。云图片处理未来必须使用独立入口并显式执行上传隐私校验。
 
 ## 6. Provider 与秘密边界
 
@@ -125,6 +128,17 @@ enum ImportAsrRoute { disabled, managed }
 
 已完成任务不能放弃。放弃不永久删除草稿，用户仍可从菜谱回收站恢复。
 
+### 7.4 结束失败导入
+
+`cancelImportTask(taskId)` 同时承担运行态取消和失败任务主动结束：
+
+1. `queued`、`running` 和 `needsReview` 继续按既有取消/放弃契约处理。
+2. `failed` 允许用户在查看真实错误后主动结束；Facade 复用原任务 ID，将状态持久化为 `cancelled`。
+3. 结束操作保留失败任务记录和原诊断信息，不删除任务，不创建替代任务、草稿或正式菜谱。
+4. `failed` 在结束前继续计入未完成；`cancelled` 不计入未完成，数据库重开后结果必须保持。
+5. 可重试的 `failed` 继续保留 `retryImportTask()` 入口；主动结束与重试由用户明确选择。
+6. 未完成任务查询不得通过过滤 `failed` 来掩盖问题。
+
 ## 8. 稳定错误
 
 统一门面新增错误只表达页面可处理的业务问题：
@@ -135,6 +149,21 @@ enum ImportAsrRoute { disabled, managed }
 - 配置、运行时能力或存储不可用。
 
 错误消息不得包含 SQL、数据库路径、API Key、Authorization、完整 Prompt、完整模型响应、完整 OCR/ASR 文本或本地媒体绝对路径。
+
+### 8.1 导入启动前异常边界
+
+`runImportTask()` 的能力校验、会话读取、Runner 创建与 Runner 执行必须处于同一个 Facade 异常映射边界内。任何步骤在任务进入 `running/fetching` 前失败，都必须返回页面可处理的 `AiRecipeBackendException`，不能以未知异常穿透到进度页。
+
+稳定映射至少覆盖：
+
+- 自定义 LLM 未配置：引导用户到 LLM 设置页配置并保存自有 AI 服务。
+- 自定义 LLM 配置不可读：提示检查 LLM 设置后重试。
+- 网络不可用：提示检查网络与 LLM 设置。
+- 会话或导入设置读取失败：返回存储不可用错误。
+- 能力状态读取失败：返回能力暂时无法确认错误。
+- Runner 路线未绑定或 Provider 配置不可用：保留 `providerRouteUnavailable` 业务错误。
+
+当任务已经持久化为 `failed` 且包含非空 `errorMessage` 时，交互层必须优先展示任务错误；页面调用栈产生的通用异常只能作为无持久化错误时的兜底，不能与真实任务错误叠加或覆盖它。
 
 ## 9. 设备组合根
 
@@ -159,6 +188,7 @@ enum ImportAsrRoute { disabled, managed }
 - [x] 自定义 LLM 未配置时在执行前被能力策略拒绝。
 - [x] 本地 OCR、云 OCR、托管 ASR 和托管 LLM 路线分别校验正确能力。
 - [x] 导入任务可以查询、取消、重试和重启恢复。
+- [ ] Android 人工确认 failed 页面可通过“结束此导入”持久化为 cancelled，首页未完成数量减少，强停重启后不再恢复；Codex 不代测。
 - [x] 草稿读取、确认、重复确认保护和放弃流程有自动化测试。
 - [x] 当前登录用户生成的导入草稿带有对应 `userId`；游客保持 `userId == null`。
 - [x] API Key 不进入 Facade 返回模型、日志、SharedPreferences 会话或 Git。

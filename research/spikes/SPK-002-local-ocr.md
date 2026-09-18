@@ -1,11 +1,11 @@
-﻿# SPK-002：本地 OCR 引擎与插件机制验证
+# SPK-002：本地 OCR 引擎与插件机制验证
 
-- 状态：DOING
-- 关联任务：`SPK-002`、`OCR-001`
-- 关联风险：`R-003`、`R-011`、`R-012`、`R-013`、`R-014`
+- 状态：TODO（Android 基础切片已通过；待真实模型与公开样本验收时继续）
+- 关联任务：`SPK-002`、`OCR-001`、`OCR-002`
+- 关联风险：`R-003`、`R-011`、`R-012`、`R-013`、`R-014`、`R-015`
 - 首选候选：PaddleOCR PP-OCRv5 mobile + ONNX Runtime Mobile
 - 架构文档：`docs/architecture/OCR_PLUGIN.md`
-- 阶段验收：`tests/acceptance/SPK-002-local-ocr-runtime-slice-2026-07-28.md`、`tests/acceptance/SPK-002-ocr-model-install-reliability-2026-07-28.md`
+- 阶段验收：`tests/acceptance/SPK-002-local-ocr-runtime-slice-2026-07-28.md`、`tests/acceptance/SPK-002-ocr-model-install-reliability-2026-07-28.md`、`tests/acceptance/SPK-002-android-real-ocr-runtime-2026-07-29.md`、`tests/acceptance/OCR-002-secure-remote-image-staging-2026-07-29.md`
 
 ## 问题
 
@@ -55,6 +55,46 @@ PaddleOCR PP-OCRv5 mobile 经 ONNX Runtime Mobile 封装后，能否在 iOS 和 
 - 跨 isolate、多服务实例、跨进程和 OS 文件锁级别的同包互斥尚未完成。
 - Manifest 签名、固定公钥、可信索引或其他可信发布链尚未实现。
 
+## 2026-07-29 Android 首阶段真实识别切片
+
+### 已完成
+
+- 将 OCR 模型 Manifest 扩展为 v1/v2：v1 继续兼容安装和 Session 健康检查，v2 必须提供可执行的 `runtimeConfig`。
+- Dart、JSON Schema 和 Kotlin 同步定义 PP-OCRv5 Detector/Recognizer 的模型角色、Tensor 名称、归一化、检测尺寸与阈值、识别输入 Shape、词典和 CTC blank index。
+- Android 本地 OCR 支持从应用私有文件或 `content://` 安全读取图片，并限制输入字节、图片边长和总像素。
+- Detector/Recognizer ONNX Session 按模型路径缓存，已实现 Bitmap 预处理、NCHW Tensor、Detector 推理、概率图阈值与连通域后处理、轴对齐裁剪、Recognizer 推理和 CTC 解码。
+- Runtime 能力探测在 ONNX Runtime 可用时报告 `recognitionSupported = true`，修复 Dart Provider 永远无法进入真实识别路径的问题。
+- 新增稳定错误：图片过大、权限拒绝、图片源不可用等；错误和日志不包含完整 URL 或本地路径。
+- 新增 Kotlin 单元测试，覆盖能力探测、UTF-8/BOM/CRLF 词典、非法词典、Manifest v2 Runtime、缺失角色、不安全相对路径和 CTC 解码。
+- 自动化验证：Dart 格式检查 120 个文件无变化，Flutter 静态分析无问题，268 项 Flutter 测试通过，Android app 模块单元测试使用 `--rerun-tasks` 完整重跑通过。
+
+### 该阶段切片当时尚未完成
+
+- 尚未接入和验证真实 PP-OCRv5 mobile ONNX 模型、词典、转换参数与许可证证据。
+- Detector 后处理是首阶段简化实现，不是完整 Paddle DB contour、min-area-rect 和 unclip 算法。
+- 未实现文字方向分类器；旋转、倾斜文字和复杂布局的准确率未知。
+- 未取得 Android 真机模型体积、首次加载、1080p 单图耗时、峰值内存、中文准确率和阅读顺序数据。
+- 该阶段切片完成时，公开内容 Adapter 可能提供 HTTPS 远程图片 URL，而原生 OCR 只接受本地私有文件或 `content://`；后续 `OCR-002` 已补齐安全暂存层。
+- iOS、跨 isolate/多服务实例/跨进程互斥、Manifest 可信发布链仍未完成。
+
+## 2026-07-29 OCR-002 远程图片安全暂存切片
+
+### 已完成
+
+- 新增 `RemoteStagingOcrProvider`，本地图片直接透传；远程图片在调用本地 OCR 前暂存为本地文件，成功、失败和取消后都会释放。
+- 默认与自定义本地 OCR Builder 都在设备组合根中经过暂存包装；云 OCR 保持供应商自行传输，不复用本地暂存层。
+- URL 策略只允许 HTTPS，拒绝 userinfo、fragment、控制字符、环回、私网、link-local、CGNAT、文档/保留地址以及混合公网和非公网 DNS 结果。
+- 下载器逐跳重新校验 URL 与 DNS，连接固定到已验证 IP，TLS 仍使用原始域名完成 SNI 和证书校验；只支持受限 HTTP/1.0/1.1 响应。
+- 支持 Content-Length、chunked 和 connection-close；限制响应头、重定向、字节、连接/TLS/响应/总操作超时，取消会销毁活动连接。
+- 仅允许 JPEG、PNG、WebP；MIME 必须与 magic bytes 匹配，并限制图片字节、单边尺寸和总像素。
+- 新增 39 项定向测试；全量 Dart 格式检查 130 个文件无变化，Dart/Flutter 静态分析无问题，307 项 Flutter 测试和 Android app 模块单元测试通过。
+
+### 仍待验证
+
+- 自动化下载测试使用可控 DNS、假连接和内存图片，尚未使用真实小红书/抖音公开图片验证防盗链、CDN 重定向、证书链和真机网络行为。
+- 真实 PP-OCRv5 mobile 模型、Android 真机性能/内存/准确率、完整 Paddle DB 后处理、方向分类器、iOS、跨进程模型锁和 Manifest 可信发布链仍未完成。
+- `OCR-002` 已完成，但不能据此把 `SPK-002` 标记为完成。
+
 ## 必测样本
 
 清晰食材列表、长步骤正文、中英文数字单位混排、竖排、倾斜、低对比度、压缩、水印截图和多图批量导入。
@@ -74,4 +114,4 @@ PaddleOCR PP-OCRv5 mobile 经 ONNX Runtime Mobile 封装后，能否在 iOS 和 
 
 ## 当前结论
 
-模型包生命周期、安装可靠性、Flutter MethodChannel 契约和 Android ONNX Runtime Session 健康检查已经证明阶段路径可行，但真实图片识别、性能、内存、准确率、许可证证据、Manifest 可信发布链和 iOS 路径均未验证。当前只能给出“阶段切片通过”，不能给出最终采用结论；本 Spike 保持 `DOING`。
+模型包生命周期、安装可靠性、Manifest v2 Runtime 契约、Android 首阶段 Detector/Recognizer 推理代码路径和远程 HTTPS 图片安全暂存已经证明工程路径可继续推进。由于尚未使用真实 PP-OCRv5 mobile 模型和真机样本验证，简化 Detector 后处理、方向处理、性能、内存、准确率、许可证证据、Manifest 可信发布链和 iOS 路径仍未验收。当前只能给出“Android 首阶段识别与 OCR-002 安全暂存切片通过”，不能给出最终采用结论；本 Spike 保持 `DOING`。

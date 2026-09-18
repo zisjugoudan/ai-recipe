@@ -1,0 +1,3 @@
+﻿CriticalMatches=0
+AppPrivacyMatches=0
+ScannedLines=1333
