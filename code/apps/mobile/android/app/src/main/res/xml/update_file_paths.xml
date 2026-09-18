@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 在线更新（UPDATE-001）：为 APK 安装提供 FileProvider 文件映射。
+     应用临时目录下的下载 APK 通过这里暴露给系统安装器。 -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="update_cache" path="." />
+    <files-path name="update_files" path="." />
+    <external-files-path name="update_external" path="." />
+</paths>

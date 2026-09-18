@@ -35,15 +35,23 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   crypto: ^3.0.7
+  archive: ^4.0.9
   http: ^1.6.0
   flutter_secure_storage: ^10.3.1
   shared_preferences: ^2.5.5
   sqflite: ^2.4.2+1
   path: ^1.9.1
   path_provider: ^2.1.6
+  image_picker: ^1.2.3
+  image: 4.8.0
+  file_picker: ^8.3.0
+  # 在线更新（UPDATE-001）：读取运行时版本号，与 Gitee Release 版本比较。
+  package_info_plus: ^8.3.1
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -53,6 +61,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   sqflite_common_ffi: ^2.4.0+3
+  # 测试用内存 SharedPreferencesAsync 实现（recipe_trash_page_test 等注入
+  # SharedPreferencesAsyncPlatform.instance）。
+  shared_preferences_platform_interface: ^2.4.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -64,6 +75,46 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    # 多模态标准诊断图（BUG-006，ADR-0028）：256×256 白底黑字+红色方块，
+    # 用于"检查图片能力"探针；运行时字节以内嵌常量加载，此资产用于留档核对。
+    - assets/diagnostics/vision_probe_v1.png
+
+    # 「支持我们」赞赏页收款码（微信/支付宝），源图位于
+    # design/assets/收款码/（微信.jpg、支付宝.jpg）。
+    - assets/payment/wechat_qr.jpg
+    - assets/payment/alipay_qr.jpg
+
+    # 程序品牌图标（「我的」页头像显示，源图 design/assets/图标.png，
+    # 与启动图标 BRAND-002 同源）。
+    - assets/brand/app_icon.png
+
+    # 首页/冰箱/导航/分类/快速导入图标（HOME-001）。
+    # 由 tool/process_home_icons.py 从 design/assets/icon/home/ 处理生成：
+    # 去底 + 主题色 + 统一 64×64 正方形 + nav.png 切 8 张。
+    - assets/icon/home/fridge/
+    - assets/icon/home/categories/
+    - assets/icon/home/quick/
+    - assets/icon/home/nav/
+
+    # 「加入交流群」页群二维码海报（源图 design/assets/交流群.jpg）。
+    - assets/community/qq_group.jpg
+
+    # 欢迎页插画与漂浮元素（UI-WELCOME-001）。
+    - assets/welcome/cover.png
+    - assets/welcome/float_leaf.png
+    - assets/welcome/float_hat.png
+    - assets/welcome/float_tomato.png
+    - assets/welcome/float_carrot.png
+    - assets/welcome/float_chili.png
+
+  fonts:
+    # 欢迎页品牌标题「巴食」像素字体（Fusion Pixel，OFL-1.1 可商用）。
+    # 支持简体中文，用等宽像素字形渲染品牌字，替代原手工点阵绘制。
+    - family: FusionPixel
+      fonts:
+        - asset: assets/fonts/fusion-pixel.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
