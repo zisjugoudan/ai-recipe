@@ -77,3 +77,25 @@ logs/
 .pytest_cache/
 __pycache__/
 *.pyc
+
+# Private assets: 收款码与群二维码属于个人数据，只保留在本地，不进入公开仓库。
+# 本地补齐方式见 code/apps/mobile/assets/payment/README.md 与
+# code/apps/mobile/assets/community/README.md。
+design/assets/收款码/
+design/assets/交流群.jpg
+code/apps/mobile/assets/收款码/
+code/apps/mobile/assets/payment/*.jpg
+code/apps/mobile/assets/community/*.jpg
+
+# Local video project: 录屏素材包含本地开发环境画面，且体积超过 1 GB
+视频剪辑/
+
+# Local tool caches and native artifacts
+.tmp/
+.trae/
+.workbuddy/
+*.hprof
+*.dill
+*.apk
+*.aab
+*.ipa

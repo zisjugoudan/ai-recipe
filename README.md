@@ -45,8 +45,25 @@
 - [代码目录规则](code/README.md)
 - [测试策略](tests/README.md)
 
+## 仓库内容边界
+
+本仓库可以公开，因此个人数据与本地产物不进入版本库。
+
+已排除的内容（仅保留在本地）：
+
+| 内容 | 原因 |
+|---|---|
+| `design/assets/收款码/`、`code/apps/mobile/assets/payment/*.jpg` | 微信 / 支付宝收款码属于个人数据 |
+| `design/assets/交流群.jpg`、`code/apps/mobile/assets/community/*.jpg` | 群二维码属于个人数据 |
+| `视频剪辑/` | 录屏素材含本地开发环境画面，且体积超过 1 GB |
+| `*.hprof`、`.tmp/`、`.trae/`、`.workbuddy/`、构建产物 | 本地产物与工具缓存 |
+
+克隆后需要自行补齐的资产：`code/apps/mobile/assets/payment/` 与 `code/apps/mobile/assets/community/` 下的收款码和群二维码已被排除，缺少时 Flutter 构建会报找不到资产。文件名与补齐方式见这两个目录内的 `README.md`。
+
+第三方内容边界：`design/assets/IP.png` 与 `design/assets/封面图.png` 是本项目水豚主厨角色的身份参考图，可用于哪些资产见 [design/assets/README.md](design/assets/README.md)。
+
 ## 当前阶段
 
-后端核心契约与 Application 主链路已形成稳定基线，UI 继续暂缓。当前主线是 `SPK-002` 本地 OCR 原生能力验证；Android 模型包 Runtime 与安装可靠性基础切片已通过，真实 OCR 推理、真机指标、iOS 和跨进程互斥仍待完成。
+Flutter 本地业务后端、HTML 原型到 Flutter 的视觉复刻、冰箱库存与推荐、导入链路、备份恢复等主链路均已实现，正处于逐项真机验收阶段；iOS 全程未验证。当前主线是 `SPK-002` 本地 OCR 原生能力验证；Android 模型包 Runtime 与安装可靠性基础切片已通过，真实 OCR 推理、真机指标、iOS 和跨进程互斥仍待完成。
 
 具体状态以 [tracking/CURRENT.md](tracking/CURRENT.md) 为准。
