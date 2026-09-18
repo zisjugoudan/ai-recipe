@@ -47,13 +47,16 @@ class PublicPageMetadataParser {
       ..._readJsonLd(content),
       ..._readStandaloneJson(content, normalizedContentType),
     ];
+    final xiaohongshuNote = _readXiaohongshuInitialStateNote(content);
 
-    final title = _firstText(<Object?>[
+    final title = _firstUsableTitle(<Object?>[
+      xiaohongshuNote?['title'],
       _firstMeta(meta, 'og:title'),
       _findFirstJsonValue(structuredData, const <String>['headline', 'name']),
       _readTitle(content),
-    ]);
+    ], baseUri);
     final description = _firstText(<Object?>[
+      xiaohongshuNote?['desc'],
       _firstMeta(meta, 'og:description'),
       _firstMeta(meta, 'description'),
       _findFirstJsonValue(structuredData, const <String>['description']),
@@ -62,6 +65,7 @@ class PublicPageMetadataParser {
       _findFirstJsonValue(structuredData, const <String>['caption']),
     ]);
     final authorName = _firstText(<Object?>[
+      _asMap(xiaohongshuNote?['user'])?['nickName'],
       _firstMeta(meta, 'author'),
       _findAuthor(structuredData),
     ]);
@@ -72,8 +76,14 @@ class PublicPageMetadataParser {
         'uploadDate',
       ]),
     ]);
+    final publishedAt =
+        _parseUnixTimestamp(xiaohongshuNote?['time']) ??
+        (publishedAtText == null
+            ? null
+            : DateTime.tryParse(publishedAtText)?.toUtc());
 
     final imageCandidates = <Object?>[
+      ..._resolveXiaohongshuImageList(xiaohongshuNote?['imageList'], baseUri),
       ..._metaValues(meta, const <String>['og:image', 'og:image:url']),
       _findJsonValues(structuredData, const <String>{
         'image',
@@ -97,14 +107,14 @@ class PublicPageMetadataParser {
       title: title,
       description: description,
       authorName: authorName,
-      publishedAt: publishedAtText == null
-          ? null
-          : DateTime.tryParse(publishedAtText)?.toUtc(),
+      publishedAt: publishedAt,
       caption: caption,
       bodyText: normalizedContentType == 'text/plain'
           ? _normalizeText(content)
           : null,
-      imageUrls: _resolveUrls(imageCandidates, baseUri),
+      imageUrls: _resolveUrls(imageCandidates, baseUri)
+          .where(_hasUsableImagePath)
+          .toList(growable: false),
       videoUrls: _resolveUrls(videoCandidates, baseUri),
       imageMimeType: _firstMeta(meta, 'og:image:type'),
       videoMimeType: _firstMeta(meta, 'og:video:type'),
@@ -165,6 +175,234 @@ class PublicPageMetadataParser {
       caseSensitive: false,
     ).firstMatch(html);
     return _normalizeText(match?.group(1));
+  }
+
+  static Map<Object?, Object?>? _readXiaohongshuInitialStateNote(String html) {
+    final assignment = RegExp(
+      r'window\.__INITIAL_STATE__\s*=',
+      caseSensitive: true,
+    ).firstMatch(html);
+    if (assignment == null) return null;
+
+    var objectStart = assignment.end;
+    while (objectStart < html.length &&
+        _isWhitespace(html.codeUnitAt(objectStart))) {
+      objectStart += 1;
+    }
+    if (objectStart >= html.length || html.codeUnitAt(objectStart) != 0x7b) {
+      return null;
+    }
+
+    final objectSource = _readBalancedJsonObject(html, objectStart);
+    if (objectSource == null) return null;
+
+    try {
+      final root = _asMap(jsonDecode(_replaceBareUndefined(objectSource)));
+      final noteStore = _asMap(root?['noteData']);
+      final data = _asMap(noteStore?['data']);
+      return _asMap(data?['noteData']);
+    } on FormatException {
+      // The initial state is optional. Keep Open Graph/JSON-LD fallbacks usable.
+      return null;
+    }
+  }
+
+  static String? _readBalancedJsonObject(String source, int start) {
+    var depth = 0;
+    var inString = false;
+    var escaped = false;
+
+    for (var index = start; index < source.length; index += 1) {
+      final codeUnit = source.codeUnitAt(index);
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (codeUnit == 0x5c) {
+          escaped = true;
+        } else if (codeUnit == 0x22) {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (codeUnit == 0x22) {
+        inString = true;
+      } else if (codeUnit == 0x7b) {
+        depth += 1;
+      } else if (codeUnit == 0x7d) {
+        depth -= 1;
+        if (depth == 0) return source.substring(start, index + 1);
+      }
+    }
+    return null;
+  }
+
+  static String _replaceBareUndefined(String source) {
+    const token = 'undefined';
+    final buffer = StringBuffer();
+    var inString = false;
+    var escaped = false;
+    var index = 0;
+
+    while (index < source.length) {
+      final codeUnit = source.codeUnitAt(index);
+      if (inString) {
+        buffer.writeCharCode(codeUnit);
+        if (escaped) {
+          escaped = false;
+        } else if (codeUnit == 0x5c) {
+          escaped = true;
+        } else if (codeUnit == 0x22) {
+          inString = false;
+        }
+        index += 1;
+        continue;
+      }
+
+      if (codeUnit == 0x22) {
+        inString = true;
+        buffer.writeCharCode(codeUnit);
+        index += 1;
+        continue;
+      }
+
+      if (source.startsWith(token, index) &&
+          _hasTokenBoundary(source, index - 1) &&
+          _hasTokenBoundary(source, index + token.length)) {
+        buffer.write('null');
+        index += token.length;
+        continue;
+      }
+
+      buffer.writeCharCode(codeUnit);
+      index += 1;
+    }
+    return buffer.toString();
+  }
+
+  static bool _hasTokenBoundary(String source, int index) {
+    if (index < 0 || index >= source.length) return true;
+    final codeUnit = source.codeUnitAt(index);
+    final isAsciiLetter =
+        (codeUnit >= 0x41 && codeUnit <= 0x5a) ||
+        (codeUnit >= 0x61 && codeUnit <= 0x7a);
+    final isDigit = codeUnit >= 0x30 && codeUnit <= 0x39;
+    return !isAsciiLetter && !isDigit && codeUnit != 0x5f && codeUnit != 0x24;
+  }
+
+  static bool _isWhitespace(int codeUnit) =>
+      codeUnit == 0x20 ||
+      codeUnit == 0x09 ||
+      codeUnit == 0x0a ||
+      codeUnit == 0x0d;
+
+  static Map<Object?, Object?>? _asMap(Object? value) =>
+      value is Map<Object?, Object?> ? value : null;
+
+  static DateTime? _parseUnixTimestamp(Object? value) {
+    final numericValue = value is num
+        ? value
+        : value is String
+        ? num.tryParse(value)
+        : null;
+    if (numericValue == null) return null;
+    final milliseconds = numericValue.abs() >= 100000000000
+        ? numericValue.round()
+        : (numericValue * 1000).round();
+    try {
+      return DateTime.fromMillisecondsSinceEpoch(milliseconds, isUtc: true);
+    } on RangeError {
+      return null;
+    }
+  }
+
+  static String? _firstUsableTitle(Iterable<Object?> candidates, Uri baseUri) {
+    for (final candidate in candidates) {
+      if (candidate is Iterable<Object?> && candidate is! String) {
+        final nested = _firstUsableTitle(candidate, baseUri);
+        if (nested != null) return nested;
+        continue;
+      }
+      final normalized = _normalizeText(candidate?.toString());
+      if (normalized == null) continue;
+      if (_isGenericXiaohongshuShellTitle(normalized, baseUri)) continue;
+      return normalized;
+    }
+    return null;
+  }
+
+  static bool _isGenericXiaohongshuShellTitle(String title, Uri baseUri) {
+    final host = baseUri.host.toLowerCase();
+    final isXiaohongshu =
+        host == 'xiaohongshu.com' ||
+        host.endsWith('.xiaohongshu.com') ||
+        host == 'xhslink.com' ||
+        host.endsWith('.xhslink.com');
+    if (!isXiaohongshu) return false;
+    final normalized = _normalizeText(title)?.toLowerCase();
+    return normalized == '小红书' || normalized == 'xiaohongshu';
+  }
+
+  static List<String> _resolveXiaohongshuImageList(
+    Object? imageList,
+    Uri baseUri,
+  ) {
+    final entries = imageList is Iterable<Object?> && imageList is! String
+        ? imageList
+        : <Object?>[imageList];
+    final result = <String>[];
+    final seen = <String>{};
+
+    void addFirstResolved(Object? candidate) {
+      // 只接受带实际资源路径的图片 URL；`https://ci.xiaohongshu.com/?imageMogr2/...`
+      // 这类只有图片处理管道参数、缺少图片 ID 的残缺 URL 无法下载，直接跳过。
+      final urls = _resolveUrls(<Object?>[candidate], baseUri)
+          .where(_hasUsableImagePath)
+          .toList(growable: false);
+      if (urls.isEmpty) return;
+      final url = urls.first;
+      if (seen.add(url)) result.add(url);
+    }
+
+    for (final entry in entries) {
+      if (entry is! Map<Object?, Object?>) {
+        addFirstResolved(entry);
+        continue;
+      }
+
+      var resolved = false;
+      for (final key in const <String>[
+        'urlDefault',
+        'urlPre',
+        'url',
+        'urlList',
+        'urls',
+        'infoList',
+        'urlSizeLarge',
+        'urlSizeMedium',
+        'urlSizeSmall',
+      ]) {
+        final urls = _resolveUrls(<Object?>[entry[key]], baseUri)
+            .where(_hasUsableImagePath)
+            .toList(growable: false);
+        if (urls.isEmpty) continue;
+        final url = urls.first;
+        if (seen.add(url)) result.add(url);
+        resolved = true;
+        break;
+      }
+      if (!resolved) addFirstResolved(entry);
+    }
+
+    return List<String>.unmodifiable(result);
+  }
+
+  /// 图片 URL 必须带有实际资源路径；path 为空或仅 `/` 视为残缺地址。
+  static bool _hasUsableImagePath(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    final path = uri.path;
+    return path.isNotEmpty && path != '/';
   }
 
   static List<Object?> _readStandaloneJson(
@@ -311,33 +549,45 @@ class PublicPageMetadataParser {
     final result = <String>[];
     final seen = <String>{};
 
-    void addCandidate(Object? candidate) {
+    bool addCandidate(Object? candidate) {
       if (candidate is Iterable<Object?> && candidate is! String) {
+        var found = false;
         for (final child in candidate) {
-          addCandidate(child);
+          found = addCandidate(child) || found;
         }
-        return;
+        return found;
       }
       if (candidate is Map<Object?, Object?>) {
-        addCandidate(
-          candidate['url'] ??
-              candidate['contentUrl'] ??
-              candidate['embedUrl'] ??
-              candidate['@id'],
-        );
-        return;
+        for (final key in const <String>[
+          'urlDefault',
+          'urlPre',
+          'url',
+          'urlList',
+          'urls',
+          'infoList',
+          'urlSizeLarge',
+          'urlSizeMedium',
+          'urlSizeSmall',
+          'contentUrl',
+          'embedUrl',
+          '@id',
+        ]) {
+          if (addCandidate(candidate[key])) return true;
+        }
+        return false;
       }
       final text = _normalizeText(candidate?.toString());
-      if (text == null) return;
+      if (text == null) return false;
       final parsed = Uri.tryParse(text);
-      if (parsed == null) return;
+      if (parsed == null) return false;
       final resolved = baseUri.resolveUri(parsed);
       final scheme = resolved.scheme.toLowerCase();
       if ((scheme != 'http' && scheme != 'https') || !resolved.hasAuthority) {
-        return;
+        return false;
       }
       final value = resolved.toString();
       if (seen.add(value)) result.add(value);
+      return true;
     }
 
     for (final candidate in candidates) {

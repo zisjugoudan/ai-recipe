@@ -36,6 +36,7 @@ void main() {
         adapter,
       ]),
       processor: processor,
+      discardRecipeDraft: discardImportRecipeDraft,
       clock: clock,
     );
     return SingleImportTaskDispatcher(repository: repository, runner: runner);

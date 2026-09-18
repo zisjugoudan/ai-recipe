@@ -42,6 +42,7 @@ void main() {
       final factory = DeviceImportTaskRunnerFactory(
         importTaskRepository: taskRepository,
         recipeRepository: recipeRepository,
+        discardRecipeDraft: discardImportRecipeDraft,
         adapterRegistry: ImportContentAdapterRegistry(<ImportContentAdapter>[
           FakeImportContentAdapter(
             platform: ImportSourcePlatform.xiaohongshu,
@@ -122,7 +123,7 @@ void main() {
       managedFactory.create(
         const ImportExecutionPlan(
           llm: ImportLlmRoute.managed,
-          ocr: ImportOcrRoute.local,
+          imageRecognition: ImportImageRecognitionRoute.ocr,
         ),
       ),
       throwsFactoryError(ImportTaskRunnerFactoryErrorCode.routeNotBound),
@@ -165,6 +166,7 @@ DeviceImportTaskRunnerFactory buildFactory({
   return DeviceImportTaskRunnerFactory(
     importTaskRepository: MemoryImportTaskRepository(),
     recipeRepository: MemoryRecipeLibraryRepository(),
+    discardRecipeDraft: discardImportRecipeDraft,
     adapterRegistry: ImportContentAdapterRegistry(<ImportContentAdapter>[
       FakeImportContentAdapter(
         platform: ImportSourcePlatform.xiaohongshu,

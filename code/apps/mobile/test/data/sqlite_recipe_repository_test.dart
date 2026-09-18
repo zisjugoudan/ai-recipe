@@ -35,7 +35,9 @@ void main() {
     bool favorite = true,
     RecipeStatus status = RecipeStatus.published,
     List<String> categoryIds = const <String>['category-home'],
+    List<String> tags = const <String>[],
     int localVersion = 1,
+    DateTime? createdAtOverride,
     DateTime? updatedAt,
     List<Ingredient>? ingredients,
     List<RecipeStep>? steps,
@@ -97,7 +99,8 @@ void main() {
             ),
           ],
       categoryIds: categoryIds,
-      createdAt: createdAt,
+      tags: tags,
+      createdAt: createdAtOverride ?? createdAt,
       updatedAt: updatedAt ?? createdAt,
       localVersion: localVersion,
     );
@@ -231,6 +234,55 @@ void main() {
     ]);
   });
 
+  test('persists tags and filters by exact literal tag values', () async {
+    await repository.upsertCategory(category());
+    await repository.upsertRecipe(
+      recipe(tags: const <String>['breakfast', '50%_quick', "chef's"]),
+    );
+    await repository.upsertRecipe(
+      recipe(
+        id: 'recipe-long-tag',
+        title: 'Fast breakfast',
+        favorite: false,
+        tags: const <String>['fast breakfast', '50AAquick'],
+        ingredients: <Ingredient>[
+          Ingredient(id: 'ingredient-long-tag', name: 'bread', sortOrder: 0),
+        ],
+        steps: <RecipeStep>[
+          RecipeStep(id: 'step-long-tag', stepNumber: 1, description: 'plate'),
+        ],
+      ),
+    );
+
+    expect(
+      (await repository.listRecipes(tag: 'breakfast')).map((item) => item.id),
+      <String>['recipe-tomato-eggs'],
+    );
+    expect(
+      (await repository.listRecipes(tag: '50%_quick')).map((item) => item.id),
+      <String>['recipe-tomato-eggs'],
+    );
+    expect(
+      (await repository.listRecipes(tag: "chef's")).map((item) => item.id),
+      <String>['recipe-tomato-eggs'],
+    );
+    expect(
+      (await repository.listRecipes(query: '50%_quick')).map((item) => item.id),
+      <String>['recipe-tomato-eggs'],
+    );
+
+    await appDatabase.close();
+    appDatabase = AppDatabase(
+      factory: databaseFactoryFfi,
+      databasePath: databasePath,
+    );
+    repository = SqliteRecipeRepository(appDatabase);
+    expect(
+      (await repository.getRecipeById('recipe-tomato-eggs'))!.tags,
+      <String>['breakfast', '50%_quick', "chef's"],
+    );
+  });
+
   test('soft deletes, restores and permanently deletes a recipe', () async {
     await repository.upsertCategory(category());
     await repository.upsertRecipe(recipe());
@@ -260,6 +312,78 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  test('permanently deletes many recipes in one batch and cascades children',
+      () async {
+    await repository.upsertCategory(category());
+    // 超过单批 500 条，验证 IN 分批删除（回收站清空 2000 条的缩影）。
+    const count = 520;
+    for (var i = 0; i < count; i++) {
+      await repository.upsertRecipe(
+        recipe(
+          id: 'bulk-$i',
+          title: '批量菜谱 $i',
+          ingredients: const <Ingredient>[],
+          steps: const <RecipeStep>[],
+          createdAtOverride: createdAt.add(Duration(seconds: i)),
+          updatedAt: createdAt.add(Duration(seconds: i)),
+        ),
+      );
+    }
+    // 另插一道带子表与分类关系的完整菜谱，验证级联清除。
+    await repository.upsertRecipe(recipe(id: 'bulk-full'));
+
+    final removed = await repository.permanentlyDeleteRecipesByIds(
+      List.generate(count + 1, (i) => i < count ? 'bulk-$i' : 'bulk-full'),
+    );
+    expect(removed, count + 1);
+
+    // 主记录全部清除。
+    final remaining = await repository.listRecipeSummaries(
+      limit: 2000,
+      includeDeleted: true,
+    );
+    expect(remaining.items, isEmpty);
+
+    // 子表被 ON DELETE CASCADE 一并清除。
+    final database = await appDatabase.database;
+    expect(await database.query('ingredients'), isEmpty);
+    expect(await database.query('recipe_steps'), isEmpty);
+    expect(await database.query('recipe_images'), isEmpty);
+    expect(await database.query('recipe_category_relations'), isEmpty);
+  });
+
+  test('soft deletes many recipes in one batch across pagination boundary',
+      () async {
+    // 超过单批 500 条，验证 IN 分批软删除（开发者工具清空 1000 条
+    // 测试菜谱的缩影：原来逐条事务需上千次提交，现在一次事务完成）。
+    await repository.upsertCategory(category());
+    const count = 520;
+    for (var i = 0; i < count; i++) {
+      await repository.upsertRecipe(
+        recipe(
+          id: 'soft-bulk-$i',
+          title: '性能测试菜谱 $i',
+          ingredients: const <Ingredient>[],
+          steps: const <RecipeStep>[],
+          createdAtOverride: createdAt.add(Duration(seconds: i)),
+          updatedAt: createdAt.add(Duration(seconds: i)),
+        ),
+      );
+    }
+
+    final deletedAt = DateTime.utc(2026, 8, 7, 10);
+    final removed = await repository.softDeleteRecipesByIds(
+      List.generate(count, (i) => 'soft-bulk-$i'),
+      deletedAt,
+    );
+    expect(removed, count);
+
+    // 全部进入回收站：软删除标记生效、删除时间一致。
+    final trashed = await repository.listTrashSummaries();
+    expect(trashed.length, count);
+    expect(trashed.every((item) => item.deletedAt == deletedAt), isTrue);
   });
 
   test('orders categories and removes deleted category relations', () async {

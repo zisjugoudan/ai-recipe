@@ -65,6 +65,7 @@ void main() {
         adapter,
       ]),
       processor: processor,
+      discardRecipeDraft: discardImportRecipeDraft,
       clock: () => now,
     );
 

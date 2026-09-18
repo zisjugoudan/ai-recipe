@@ -38,7 +38,7 @@ void main() {
 
     final result = await processor.process(
       content,
-      onProgress: (_, _) async {},
+      onProgress: (_, _, [detail]) async {},
     );
 
     expect(result.recipeId, 'recipe-1');
@@ -78,7 +78,7 @@ void main() {
     );
 
     await expectLater(
-      processor.process(content, onProgress: (_, _) async {}),
+      processor.process(content, onProgress: (_, _, [detail]) async {}),
       throwsA(
         isA<ImportPipelineException>()
             .having(
@@ -117,7 +117,7 @@ void main() {
 
     final result = await processor.process(
       buildContent(source),
-      onProgress: (stage, progress) async {
+      onProgress: (stage, progress, [detail]) async {
         progressEvents.add((stage, progress));
       },
     );
@@ -170,7 +170,7 @@ void main() {
       maxImages: 1,
     );
 
-    await processor.process(buildContent(source), onProgress: (_, _) async {});
+    await processor.process(buildContent(source), onProgress: (_, _, [detail]) async {});
 
     expect(provider.inputs, hasLength(1));
     expect(received!.warnings, contains(ImportContentWarning.partialContent));
@@ -200,7 +200,7 @@ void main() {
 
       await processor.process(
         buildContent(source),
-        onProgress: (_, _) async {},
+        onProgress: (_, _, [detail]) async {},
       );
 
       expect(
@@ -228,7 +228,7 @@ void main() {
     );
 
     await expectLater(
-      processor.process(buildContent(source), onProgress: (_, _) async {}),
+      processor.process(buildContent(source), onProgress: (_, _, [detail]) async {}),
       throwsA(
         isA<ImportPipelineException>()
             .having(
@@ -266,7 +266,7 @@ void main() {
 
       await processor.process(
         buildContent(source),
-        onProgress: (_, _) async {},
+        onProgress: (_, _, [detail]) async {},
       );
 
       expect(
@@ -315,7 +315,7 @@ void main() {
       );
 
       await expectLater(
-        processor.process(buildContent(source), onProgress: (_, _) async {}),
+        processor.process(buildContent(source), onProgress: (_, _, [detail]) async {}),
         throwsA(
           isA<ImportPipelineException>()
               .having((error) => error.code, 'code', entry.value.$1)
@@ -340,7 +340,7 @@ void main() {
     );
 
     await expectLater(
-      processor.process(buildContent(source), onProgress: (_, _) async {}),
+      processor.process(buildContent(source), onProgress: (_, _, [detail]) async {}),
       throwsA(
         isA<ImportPipelineException>()
             .having(
@@ -377,12 +377,51 @@ void main() {
     await expectLater(
       processor.process(
         buildContent(source),
-        onProgress: (_, _) async {},
+        onProgress: (_, _, [detail]) async {},
         cancellationToken: token,
       ),
       throwsA(isA<ImportOperationCancelledException>()),
     );
     expect(provider.inputs, isEmpty);
+    expect(downstream.callCount, 0);
+  });
+
+  test('maps OCR provider failures to stable Chinese messages', () async {
+    final provider = FakeOcrProvider((input, token) async {
+      throw const OcrProviderException(
+        kind: OcrProviderErrorKind.modelNotInstalled,
+        message: 'legacy english text should not surface',
+      );
+    });
+    final processor = OcrEnrichingImportContentProcessor(
+      provider: provider,
+      downstream: FakeImportContentProcessor((
+        content,
+        progress,
+        token,
+      ) async {
+        return ImportRecipeDraftResult(recipeId: 'unexpected');
+      }),
+    );
+
+    await expectLater(
+      processor.process(buildContent(source), onProgress: (_, _, [detail]) async {}),
+      throwsA(
+        isA<ImportPipelineException>()
+            .having(
+              (error) => error.code,
+              'code',
+              ImportTaskErrorCode.ocrFailed,
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              '本地 OCR 模型尚未安装，请先在 OCR 设置中安装模型包。',
+            )
+            .having((error) => error.retryable, 'retryable', isFalse),
+      ),
+    );
+    expect(provider.inputs, hasLength(1));
     expect(downstream.callCount, 0);
   });
 

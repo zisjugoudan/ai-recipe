@@ -62,6 +62,63 @@ void main() {
     },
   );
 
+  test('content toJson/fromJson round-trips the original evidence', () {
+    final content = ImportContent(
+      source: source,
+      resolvedUrl: source.normalizedUrl,
+      contentType: ImportContentType.mixed,
+      title: '番茄炒蛋',
+      description: '酸甜开胃的快手家常菜。',
+      authorName: '阿飞',
+      capturedAt: DateTime.parse('2026-07-28T18:00:00+08:00'),
+      textFragments: <ImportTextFragment>[
+        ImportTextFragment(
+          kind: ImportTextFragmentKind.body,
+          text: '鸡蛋打散备用。',
+          order: 0,
+          confidence: 0.92,
+          sourceType: ImportTextFragmentSourceType.ocr,
+        ),
+        ImportTextFragment(
+          kind: ImportTextFragmentKind.title,
+          text: '番茄炒蛋',
+          order: 1,
+        ),
+      ],
+      media: <ImportMediaReference>[
+        ImportMediaReference(
+          kind: ImportMediaKind.image,
+          localAssetId: 'asset-1',
+          order: 0,
+        ),
+      ],
+      warnings: const <ImportContentWarning>[
+        ImportContentWarning.partialContent,
+      ],
+    );
+
+    final restored = ImportContent.fromJson(content.toJson());
+    expect(restored.source.sourceUrl, content.source.sourceUrl);
+    expect(restored.source.normalizedUrl, content.source.normalizedUrl);
+    expect(restored.source.platform, content.source.platform);
+    expect(restored.resolvedUrl, content.resolvedUrl);
+    expect(restored.contentType, content.contentType);
+    expect(restored.title, content.title);
+    expect(restored.description, content.description);
+    expect(restored.authorName, content.authorName);
+    expect(restored.capturedAt, content.capturedAt);
+    expect(restored.textFragments.length, content.textFragments.length);
+    expect(restored.textFragments[0].text, '鸡蛋打散备用。');
+    expect(restored.textFragments[0].sourceType, ImportTextFragmentSourceType.ocr);
+    expect(restored.textFragments[0].confidence, 0.92);
+    expect(restored.media.length, content.media.length);
+    expect(restored.media.single.localAssetId, 'asset-1');
+    expect(
+      restored.warnings,
+      <ImportContentWarning>{ImportContentWarning.partialContent},
+    );
+  });
+
   test('content requires text or media and validates media URLs', () {
     expect(
       () => ImportContent(
@@ -115,6 +172,7 @@ void main() {
       'sourceStartMs': 1200,
       'sourceEndMs': 3400,
       'speakerLabel': 'cook',
+      'sourceType': 'authorText',
     });
     final emptyEvidence = ImportTextFragment(
       kind: ImportTextFragmentKind.body,

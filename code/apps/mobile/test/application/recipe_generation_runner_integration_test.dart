@@ -1,3 +1,4 @@
+import 'package:ai_recipe/application/importing/import_recipe_draft_discarder.dart';
 import 'package:ai_recipe/application/importing/import_task_runner.dart';
 import 'package:ai_recipe/application/importing/llm_recipe_generation_processor.dart';
 import 'package:ai_recipe/domain/importing/import_cancellation_token.dart';
@@ -61,6 +62,7 @@ void main() {
           adapter,
         ]),
         processor: processor,
+        discardRecipeDraft: discardImportRecipeDraft,
         clock: () => now,
       );
 
@@ -79,7 +81,7 @@ void main() {
   );
 
   test(
-    'processor success is a commit point even when cancellation arrives after save',
+    'cancellation after draft persistence removes the draft and wins the race',
     () async {
       final now = DateTime.utc(2026, 7, 28, 18);
       final source = ImportSourceLink.parse(
@@ -125,6 +127,9 @@ void main() {
           adapter,
         ]),
         processor: processor,
+        discardRecipeDraft: SafeImportRecipeDraftDiscarder(
+          recipeRepository,
+        ).call,
         clock: () => now,
       );
 
@@ -134,10 +139,10 @@ void main() {
       );
 
       expect(cancellationToken.isCancelled, isTrue);
-      expect(result.outcome, ImportTaskRunOutcome.needsReview);
-      expect(result.task.status, ImportTaskStatus.needsReview);
-      expect(result.task.resultRecipeId, 'commit-1');
-      expect(recipeRepository.recipes, contains('commit-1'));
+      expect(result.outcome, ImportTaskRunOutcome.cancelled);
+      expect(result.task.status, ImportTaskStatus.cancelled);
+      expect(result.task.resultRecipeId, isNull);
+      expect(recipeRepository.recipes, isNot(contains('commit-1')));
     },
   );
 }

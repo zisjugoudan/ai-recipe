@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 
+import '../domain/importing/import_content.dart';
 import '../domain/importing/import_task.dart';
 import '../domain/importing/import_task_repository.dart';
 import 'local/app_database.dart';
@@ -10,13 +13,54 @@ class SqliteImportTaskRepository implements ImportTaskRepository {
   final AppDatabase _appDatabase;
 
   @override
-  Future<void> upsertTask(ImportTask task) async {
+  Future<void> upsertTask(ImportTask task, {int? expectedLocalVersion}) async {
     final database = await _appDatabase.database;
-    await database.insert(
-      'import_tasks',
-      _taskToRow(task),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await database.transaction((transaction) async {
+      if (expectedLocalVersion == null) {
+        try {
+          await transaction.insert(
+            'import_tasks',
+            _taskToRow(task),
+            conflictAlgorithm: ConflictAlgorithm.abort,
+          );
+          return;
+        } on DatabaseException {
+          final actualLocalVersion = await _readLocalVersion(
+            transaction,
+            task.id,
+          );
+          if (actualLocalVersion != null) {
+            throw ImportTaskWriteConflictException(
+              id: task.id,
+              expectedLocalVersion: null,
+              actualLocalVersion: actualLocalVersion,
+            );
+          }
+          rethrow;
+        }
+      }
+
+      if (task.localVersion != expectedLocalVersion + 1) {
+        throw ArgumentError.value(
+          task.localVersion,
+          'task.localVersion',
+          'must be exactly one greater than expectedLocalVersion',
+        );
+      }
+      final changed = await transaction.update(
+        'import_tasks',
+        _taskToRow(task),
+        where: 'id = ? AND local_version = ?',
+        whereArgs: <Object?>[task.id, expectedLocalVersion],
+      );
+      if (changed == 0) {
+        throw ImportTaskWriteConflictException(
+          id: task.id,
+          expectedLocalVersion: expectedLocalVersion,
+          actualLocalVersion: await _readLocalVersion(transaction, task.id),
+        );
+      }
+    });
   }
 
   @override
@@ -119,6 +163,57 @@ class SqliteImportTaskRepository implements ImportTaskRepository {
       whereArgs: <Object?>[id],
     );
     _requireChanged(changed, id);
+    // 一并清理持久化的原始内容证据，避免残留。
+    await database.delete(
+      'import_task_evidence',
+      where: 'task_id = ?',
+      whereArgs: <Object?>[id],
+    );
+  }
+
+  @override
+  Future<void> saveImportEvidence(String taskId, ImportContent content) async {
+    final database = await _appDatabase.database;
+    await database.insert(
+      'import_task_evidence',
+      <String, Object?>{
+        'task_id': taskId,
+        'evidence_json': jsonEncode(content.toJson()),
+        'updated_at': _toEpoch(content.capturedAt),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  @override
+  Future<ImportContent?> loadImportEvidence(String taskId) async {
+    final database = await _appDatabase.database;
+    final rows = await database.query(
+      'import_task_evidence',
+      columns: const <String>['evidence_json'],
+      where: 'task_id = ?',
+      whereArgs: <Object?>[taskId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final raw = rows.single['evidence_json']! as String;
+    return ImportContent.fromJson(
+      (jsonDecode(raw) as Map).cast<String, Object?>(),
+    );
+  }
+
+  static Future<int?> _readLocalVersion(
+    DatabaseExecutor database,
+    String id,
+  ) async {
+    final rows = await database.query(
+      'import_tasks',
+      columns: const <String>['local_version'],
+      where: 'id = ?',
+      whereArgs: <Object?>[id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.single['local_version']! as int;
   }
 
   static Map<String, Object?> _taskToRow(ImportTask task) {
@@ -136,6 +231,9 @@ class SqliteImportTaskRepository implements ImportTaskRepository {
       'error_message': task.errorMessage,
       'retryable': task.retryable ? 1 : 0,
       'result_recipe_id': task.resultRecipeId,
+      'additional_result_recipe_ids':
+          jsonEncode(task.additionalResultRecipeIds),
+      'progress_detail': task.progressDetail,
       'created_at': _toEpoch(task.createdAt),
       'updated_at': _toEpoch(task.updatedAt),
       'started_at': _nullableToEpoch(task.startedAt),
@@ -167,6 +265,10 @@ class SqliteImportTaskRepository implements ImportTaskRepository {
       errorMessage: row['error_message'] as String?,
       retryable: row['retryable']! as int == 1,
       resultRecipeId: row['result_recipe_id'] as String?,
+      additionalResultRecipeIds: _decodeAdditionalIds(
+        row['additional_result_recipe_ids'] as String?,
+      ),
+      progressDetail: row['progress_detail'] as String?,
       createdAt: _fromEpoch(row['created_at']! as int),
       updatedAt: _fromEpoch(row['updated_at']! as int),
       startedAt: _nullableFromEpoch(row['started_at'] as int?),
@@ -180,6 +282,22 @@ class SqliteImportTaskRepository implements ImportTaskRepository {
 
   static T? _nullableEnum<T extends Enum>(String? name, List<T> values) {
     return name == null ? null : values.byName(name);
+  }
+
+  /// 解码附加草稿 ID 列（JSON 数组；异常/空值回退为空列表）。
+  static List<String> _decodeAdditionalIds(String? raw) {
+    if (raw == null || raw.isEmpty) return const <String>[];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const <String>[];
+      return decoded
+          .whereType<String>()
+          .map((id) => id.trim())
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
+    } catch (_) {
+      return const <String>[];
+    }
   }
 
   static int _toEpoch(DateTime value) => value.toUtc().millisecondsSinceEpoch;

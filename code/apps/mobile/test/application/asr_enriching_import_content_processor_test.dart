@@ -27,7 +27,7 @@ void main() {
 
     final result = await processor.process(
       buildContent(source, warnings: const <ImportContentWarning>[]),
-      onProgress: (_, _) async {},
+      onProgress: (_, _, [detail]) async {},
     );
 
     expect(result.recipeId, 'recipe-asr');
@@ -46,7 +46,7 @@ void main() {
 
     await processor.process(
       buildContent(source),
-      onProgress: (stage, progress) async => events.add((stage, progress)),
+      onProgress: (stage, progress, [detail]) async => events.add((stage, progress)),
     );
 
     expect(events.first, (ImportTaskStage.transcribing, 0.61));
@@ -73,7 +73,7 @@ void main() {
     );
 
     await expectLater(
-      processor.process(content, onProgress: (_, _) async {}),
+      processor.process(content, onProgress: (_, _, [detail]) async {}),
       throwsA(
         isA<ImportPipelineException>().having(
           (error) => error.code,
@@ -112,7 +112,7 @@ void main() {
       languageHint: 'zh-Hans',
     );
 
-    await processor.process(buildContent(source), onProgress: (_, _) async {});
+    await processor.process(buildContent(source), onProgress: (_, _, [detail]) async {});
 
     expect(provider.inputs.map((input) => input.order), <int>[1, 2]);
     expect(provider.inputs.first.kind, AsrMediaKind.video);
@@ -155,7 +155,7 @@ void main() {
       }),
     );
 
-    await processor.process(buildContent(source), onProgress: (_, _) async {});
+    await processor.process(buildContent(source), onProgress: (_, _, [detail]) async {});
 
     expect(provider.inputs, hasLength(1));
     expect(received!.warnings, contains(ImportContentWarning.partialContent));
@@ -174,7 +174,7 @@ void main() {
     await expectLater(
       processor.process(
         buildContent(source, firstDurationMs: 1001),
-        onProgress: (_, _) async {},
+        onProgress: (_, _, [detail]) async {},
       ),
       throwsA(
         isA<ImportPipelineException>()
@@ -208,7 +208,7 @@ void main() {
       }),
     );
 
-    await processor.process(buildContent(source), onProgress: (_, _) async {});
+    await processor.process(buildContent(source), onProgress: (_, _, [detail]) async {});
 
     expect(received!.textFragments.last.text, 'usable transcript');
     expect(received!.warnings, contains(ImportContentWarning.partialContent));
@@ -237,7 +237,7 @@ void main() {
       }),
     );
 
-    await processor.process(buildContent(source), onProgress: (_, _) async {});
+    await processor.process(buildContent(source), onProgress: (_, _, [detail]) async {});
 
     expect(
       received!.textFragments.where((item) => item.text == 'same'),
@@ -256,7 +256,7 @@ void main() {
     );
 
     await expectLater(
-      processor.process(buildContent(source), onProgress: (_, _) async {}),
+      processor.process(buildContent(source), onProgress: (_, _, [detail]) async {}),
       throwsA(
         isA<ImportPipelineException>().having(
           (error) => error.code,
@@ -299,7 +299,7 @@ void main() {
         await expectLater(
           processor.process(
             buildContent(source, includeSecondMedia: false),
-            onProgress: (_, _) async {},
+            onProgress: (_, _, [detail]) async {},
           ),
           throwsA(isA<ImportOperationCancelledException>()),
         );
@@ -307,7 +307,7 @@ void main() {
         await expectLater(
           processor.process(
             buildContent(source, includeSecondMedia: false),
-            onProgress: (_, _) async {},
+            onProgress: (_, _, [detail]) async {},
           ),
           throwsA(
             isA<ImportPipelineException>()
@@ -338,7 +338,7 @@ void main() {
     await expectLater(
       processor.process(
         buildContent(source, includeSecondMedia: false),
-        onProgress: (_, _) async {},
+        onProgress: (_, _, [detail]) async {},
       ),
       throwsA(
         isA<ImportPipelineException>()
@@ -370,7 +370,7 @@ void main() {
     await expectLater(
       processor.process(
         buildContent(source),
-        onProgress: (_, _) async {},
+        onProgress: (_, _, [detail]) async {},
         cancellationToken: token,
       ),
       throwsA(isA<ImportOperationCancelledException>()),

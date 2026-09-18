@@ -27,7 +27,7 @@ void main() {
     expect(douyin.normalizedUrl, 'https://v.douyin.com/abc123/');
   });
 
-  test('rejects malformed URLs and unsupported platforms', () {
+  test('rejects malformed URLs and maps unknown hosts to web platform', () {
     expect(
       () => ImportSourceLink.parse('not-a-url'),
       throwsA(
@@ -38,16 +38,10 @@ void main() {
         ),
       ),
     );
-    expect(
-      () => ImportSourceLink.parse('https://example.com/recipe'),
-      throwsA(
-        isA<ImportTaskInputException>().having(
-          (error) => error.code,
-          'code',
-          ImportTaskErrorCode.unsupportedPlatform,
-        ),
-      ),
-    );
+    // IMPORT-008：任意未知域名归为通用 web 平台，由浏览器内核（WebView）抓取。
+    final web = ImportSourceLink.parse('https://example.com/recipe');
+    expect(web.platform, ImportSourcePlatform.web);
+    expect(web.normalizedUrl, 'https://example.com/recipe');
   });
 
   test('runs through generation, review, and completion', () {
@@ -205,5 +199,88 @@ void main() {
     expect(exhausted.status, ImportTaskStatus.failed);
     expect(exhausted.errorCode, ImportTaskErrorCode.interrupted);
     expect(exhausted.retryable, isFalse);
+  });
+
+  test(
+    'fallback start preserves source identity and clears terminal state',
+    () {
+      final failureTime = createdAt.add(const Duration(minutes: 2));
+      final failed = queued()
+          .start(createdAt.add(const Duration(minutes: 1)))
+          .fail(
+            code: ImportTaskErrorCode.networkUnavailable,
+            message: 'offline',
+            canRetry: true,
+            nextRetryAt: failureTime.add(const Duration(minutes: 5)),
+            now: failureTime,
+          );
+
+      final started = failed.startWithFallback(
+        createdAt.add(const Duration(minutes: 3)),
+      );
+
+      expect(started.id, failed.id);
+      expect(started.sourceUrl, failed.sourceUrl);
+      expect(started.normalizedUrl, failed.normalizedUrl);
+      expect(started.sourcePlatform, failed.sourcePlatform);
+      expect(started.attempt, failed.attempt);
+      expect(started.status, ImportTaskStatus.running);
+      expect(started.stage, ImportTaskStage.extracting);
+      expect(started.progress, 0.25);
+      expect(started.errorCode, isNull);
+      expect(started.errorMessage, isNull);
+      expect(started.nextRetryAt, isNull);
+      expect(started.completedAt, isNull);
+      expect(started.cancelledAt, isNull);
+    },
+  );
+
+  test('fallback start accepts queued, failed and cancelled tasks', () {
+    final cancelled = queued().cancel(
+      createdAt.add(const Duration(minutes: 1)),
+    );
+    expect(
+      cancelled
+          .startWithFallback(createdAt.add(const Duration(minutes: 2)))
+          .status,
+      ImportTaskStatus.running,
+    );
+    // 排队任务（快速导入"拍照选图/剪贴板"新建的占位任务，IMPORT-009）：
+    // 直接进入 extracting，跳过 fetching，不抓取公开链接。
+    final started = queued().startWithFallback(
+      createdAt.add(const Duration(minutes: 1)),
+    );
+    expect(started.status, ImportTaskStatus.running);
+    expect(started.stage, ImportTaskStage.extracting);
+    expect(started.progress, 0.25);
+    expect(started.startedAt, createdAt.add(const Duration(minutes: 1)));
+    // 运行中/待确认等其余状态仍拒绝。
+    final running = queued().start(createdAt.add(const Duration(minutes: 1)));
+    expect(
+      () =>
+          running.startWithFallback(createdAt.add(const Duration(minutes: 2))),
+      throwsA(isA<ImportTaskTransitionException>()),
+    );
+  });
+
+  test('restart recovery does not requeue interrupted fallback processing', () {
+    final failed = queued().fail(
+      code: ImportTaskErrorCode.contentUnavailable,
+      canRetry: false,
+      now: createdAt.add(const Duration(minutes: 1)),
+    );
+    final fallback = failed.startWithFallback(
+      createdAt.add(const Duration(minutes: 2)),
+    );
+
+    final recovered = fallback.recoverAfterRestart(
+      createdAt.add(const Duration(minutes: 3)),
+    );
+
+    expect(recovered.status, ImportTaskStatus.failed);
+    expect(recovered.errorCode, ImportTaskErrorCode.interrupted);
+    expect(recovered.retryable, isFalse);
+    expect(recovered.canRetry, isFalse);
+    expect(recovered.attempt, fallback.attempt);
   });
 }

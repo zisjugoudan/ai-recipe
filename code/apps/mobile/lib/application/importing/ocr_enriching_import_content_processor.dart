@@ -44,7 +44,7 @@ class OcrEnrichingImportContentProcessor implements ImportContentProcessor {
     if (images.isEmpty) {
       throw const ImportPipelineException(
         code: ImportTaskErrorCode.ocrFailed,
-        message: 'OCR requires at least one image.',
+        message: '图片文字识别需要至少一张图片。',
         retryable: false,
       );
     }
@@ -68,7 +68,9 @@ class OcrEnrichingImportContentProcessor implements ImportContentProcessor {
       final media = images[index];
       final document = await _recognize(
         OcrImageInput(
-          remoteUrl: media.remoteUrl,
+          // 小红书等平台可能返回 http 图片地址，安全暂存层要求 HTTPS，
+          // 识别前统一升级为 https。
+          remoteUrl: _secureImageUrl(media.remoteUrl),
           localAssetId: media.localAssetId,
           mimeType: media.mimeType,
           width: media.width,
@@ -103,7 +105,7 @@ class OcrEnrichingImportContentProcessor implements ImportContentProcessor {
     if (fragments.isEmpty) {
       throw const ImportPipelineException(
         code: ImportTaskErrorCode.ocrFailed,
-        message: 'OCR did not return usable text.',
+        message: '图片中没有识别到可用的文字。',
         retryable: false,
       );
     }
@@ -142,6 +144,21 @@ class OcrEnrichingImportContentProcessor implements ImportContentProcessor {
     );
   }
 
+  /// 把 http 图片地址升级为 https（其余地址原样返回）。
+  ///
+  /// 小红书等平台的图片地址可能是 `http://`，而远程图片安全暂存层要求
+  /// HTTPS-only；统一升级后再识别，避免图片因协议被拒。
+  static String? _secureImageUrl(String? url) {
+    if (url == null) return null;
+    final uri = Uri.tryParse(url);
+    if (uri != null &&
+        uri.scheme.toLowerCase() == 'http' &&
+        uri.hasAuthority) {
+      return uri.replace(scheme: 'https').toString();
+    }
+    return url;
+  }
+
   Future<OcrDocument> _recognize(
     OcrImageInput input,
     ImportCancellationToken? cancellationToken,
@@ -158,51 +175,69 @@ class OcrEnrichingImportContentProcessor implements ImportContentProcessor {
     } catch (_) {
       throw const ImportPipelineException(
         code: ImportTaskErrorCode.ocrFailed,
-        message: 'OCR processing failed unexpectedly.',
+        message: '图片文字识别失败，请稍后重试。',
         retryable: true,
       );
     }
   }
 
+  /// 把 OCR Provider 错误映射为稳定中文文案。
+  ///
+  /// 常见失败路径（模型未安装、识别不可用、图片无效）使用固定可操作文案；
+  /// 网络/超时等临时错误保持可重试，具体 message 已由 Provider 中文化。
   static ImportPipelineException _mapProviderError(OcrProviderException error) {
-    final message = _sanitizeMessage(error.message);
     return switch (error.kind) {
-      OcrProviderErrorKind.cancelled => ImportPipelineException(
+      OcrProviderErrorKind.cancelled => const ImportPipelineException(
         code: ImportTaskErrorCode.cancelled,
-        message: message,
+        message: '图片文字识别已取消。',
         retryable: false,
       ),
-      OcrProviderErrorKind.networkUnavailable => ImportPipelineException(
-        code: ImportTaskErrorCode.networkUnavailable,
-        message: message,
+      OcrProviderErrorKind.modelNotInstalled => const ImportPipelineException(
+        code: ImportTaskErrorCode.ocrFailed,
+        message: '本地 OCR 模型尚未安装，请先在 OCR 设置中安装模型包。',
+        retryable: false,
+      ),
+      OcrProviderErrorKind.unavailable => const ImportPipelineException(
+        code: ImportTaskErrorCode.ocrFailed,
+        message: '本地 OCR 当前不可用，请检查 OCR 设置后重试。',
+        retryable: false,
+      ),
+      OcrProviderErrorKind.invalidInput => const ImportPipelineException(
+        code: ImportTaskErrorCode.ocrFailed,
+        message: '图片无法用于文字识别，请检查图片后重试。',
+        retryable: false,
+      ),
+      OcrProviderErrorKind.invalidResponse => const ImportPipelineException(
+        code: ImportTaskErrorCode.ocrFailed,
+        message: '图片内容无效，无法完成文字识别。',
+        retryable: false,
+      ),
+      OcrProviderErrorKind.inferenceFailed => const ImportPipelineException(
+        code: ImportTaskErrorCode.ocrFailed,
+        message: '图片文字识别失败，请稍后重试。',
         retryable: true,
       ),
-      OcrProviderErrorKind.timeout => ImportPipelineException(
+      OcrProviderErrorKind.networkUnavailable => const ImportPipelineException(
+        code: ImportTaskErrorCode.networkUnavailable,
+        message: '无法获取图片内容，请检查网络后重试。',
+        retryable: true,
+      ),
+      OcrProviderErrorKind.timeout => const ImportPipelineException(
         code: ImportTaskErrorCode.timeout,
-        message: message,
+        message: '获取图片内容超时，请稍后重试。',
         retryable: true,
       ),
       OcrProviderErrorKind.rateLimited ||
-      OcrProviderErrorKind.unknown => ImportPipelineException(
+      OcrProviderErrorKind.unknown => const ImportPipelineException(
         code: ImportTaskErrorCode.ocrFailed,
-        message: message,
+        message: '图片文字识别暂时失败，请稍后重试。',
         retryable: true,
       ),
-      _ => ImportPipelineException(
+      OcrProviderErrorKind.unauthorized => const ImportPipelineException(
         code: ImportTaskErrorCode.ocrFailed,
-        message: message,
+        message: '图片来源未授权，暂时无法识别。',
         retryable: false,
       ),
     };
-  }
-
-  static String _sanitizeMessage(String message) {
-    final normalized = message.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (normalized.isEmpty) {
-      return 'OCR processing failed.';
-    }
-    return normalized.length <= 240
-        ? normalized
-        : '${normalized.substring(0, 237)}...';
   }
 }

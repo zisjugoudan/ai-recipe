@@ -7,6 +7,7 @@ class FakeLlmTransport implements LlmTransport {
   LlmHttpResponse response;
   LlmHttpRequest? lastRequest;
   LlmCancellationToken? lastCancellationToken;
+  LlmDiagnosticReport Function()? diagnosticReport;
 
   @override
   Future<LlmHttpResponse> send(
@@ -17,5 +18,20 @@ class FakeLlmTransport implements LlmTransport {
     lastRequest = request;
     lastCancellationToken = cancellationToken;
     return response;
+  }
+
+  @override
+  Future<LlmDiagnosticReport> sendDiagnostic(
+    LlmDiagnosticRequest request, {
+    LlmCancellationToken? cancellationToken,
+  }) async {
+    cancellationToken?.throwIfCancelled();
+    return diagnosticReport != null
+        ? diagnosticReport!()
+        : const LlmDiagnosticReport(
+            records: [],
+            totalElapsedMs: 0,
+            succeeded: true,
+          );
   }
 }

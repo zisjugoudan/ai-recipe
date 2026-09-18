@@ -9,6 +9,9 @@ enum AppCapability {
   cloudOcr,
   managedAsr,
   cloudSync,
+
+  /// 多模态 LLM（识图引擎，IMAGE-001）：独立配置的图片识别 AI。
+  multimodalLlm,
 }
 
 enum CapabilityReadiness {

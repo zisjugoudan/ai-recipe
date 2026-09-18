@@ -1,5 +1,32 @@
 enum OcrProviderKind { localPlugin, cloudApi }
 
+/// OCR 设置页"测试 OCR"的一次识别结果（识别文本 + 耗时等）。
+class OcrTestResult {
+  const OcrTestResult({
+    required this.text,
+    required this.modelVersion,
+    required this.language,
+    required this.blockCount,
+    this.durationMs,
+    this.averageConfidence,
+  });
+
+  /// 识别出的全文（按阅读顺序拼接，多行用换行分隔）。
+  final String text;
+
+  final String modelVersion;
+  final String language;
+
+  /// 识别出的文本块数量。
+  final int blockCount;
+
+  /// 识别耗时（毫秒，运行时未回传时为 null）。
+  final int? durationMs;
+
+  /// 平均置信度 0..1（无文本块时为 null）。
+  final double? averageConfidence;
+}
+
 class OcrImageInput {
   OcrImageInput({
     String? remoteUrl,

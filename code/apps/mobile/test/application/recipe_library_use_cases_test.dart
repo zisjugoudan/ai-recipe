@@ -18,6 +18,7 @@ void main() {
     bool favorite = false,
     RecipeStatus status = RecipeStatus.draft,
     List<String> categoryIds = const <String>[],
+    List<String> tags = const <String>[],
     List<RecipeIngredientInput>? ingredients,
     List<RecipeStepInput>? steps,
   }) {
@@ -27,6 +28,7 @@ void main() {
       favorite: favorite,
       status: status,
       categoryIds: categoryIds,
+      tags: tags,
       ingredients:
           ingredients ??
           <RecipeIngredientInput>[
@@ -135,6 +137,64 @@ void main() {
     );
   });
 
+  test('updateRecipeStepDuration updates only the target step duration', () async {
+    final created = await useCases.createRecipe(
+      draft(
+        steps: const <RecipeStepInput>[
+          RecipeStepInput(description: '炒蛋', durationSeconds: 180),
+          RecipeStepInput(description: '摆盘'),
+        ],
+      ),
+    );
+    final target = created.steps.last; // 无时长的步骤
+    now = now.add(const Duration(minutes: 5));
+
+    final updated = await useCases.updateRecipeStepDuration(
+      created.id,
+      target.id,
+      90,
+    );
+
+    expect(updated.id, created.id);
+    expect(updated.localVersion, 2);
+    expect(updated.updatedAt, now);
+    expect(updated.favorite, created.favorite);
+    // 目标步骤时长被更新，其他步骤不变。
+    final updatedTarget = updated.steps.singleWhere((step) => step.id == target.id);
+    expect(updatedTarget.durationSeconds, 90);
+    expect(updatedTarget.description, '摆盘');
+    final untouched = updated.steps.singleWhere((step) => step.id != target.id);
+    expect(untouched.durationSeconds, 180);
+    // 持久化：重新读取仍是新时长。
+    final reloaded = await useCases.getRecipe(created.id);
+    expect(
+      reloaded.steps.singleWhere((step) => step.id == target.id).durationSeconds,
+      90,
+    );
+  });
+
+  test('updateRecipeStepDuration rejects invalid duration', () async {
+    final created = await useCases.createRecipe(draft());
+
+    await expectLater(
+      useCases.updateRecipeStepDuration(
+        created.id,
+        created.steps.single.id,
+        0,
+      ),
+      throwsA(isA<RecipeLibraryValidationException>()),
+    );
+  });
+
+  test('updateRecipeStepDuration rejects a step that does not belong', () async {
+    final created = await useCases.createRecipe(draft());
+
+    await expectLater(
+      useCases.updateRecipeStepDuration(created.id, 'foreign-step', 60),
+      throwsA(isA<RecipeLibraryValidationException>()),
+    );
+  });
+
   test(
     'missing and deleted categories are rejected before recipe write',
     () async {
@@ -212,6 +272,90 @@ void main() {
       );
     },
   );
+
+  test('normalizes tags and searches them case-insensitively', () async {
+    final tagged = await useCases.createRecipe(
+      draft(
+        tags: const <String>[
+          '  quick  ',
+          '',
+          'breakfast',
+          'quick',
+          'BREAKFAST',
+        ],
+      ),
+    );
+
+    expect(tagged.tags, <String>['quick', 'breakfast']);
+    expect(
+      (await useCases.listRecipes(query: 'BREAKFAST')).map((item) => item.id),
+      <String>[tagged.id],
+    );
+    expect(
+      (await useCases.listRecipes(tag: ' breakfast ')).map((item) => item.id),
+      <String>[tagged.id],
+    );
+  });
+
+  test('copies a recipe with independent ids and draft defaults', () async {
+    final source = await useCases.createRecipe(
+      draft(
+        title: 'Original recipe',
+        favorite: true,
+        status: RecipeStatus.published,
+        tags: const <String>['dinner'],
+      ),
+      sourceId: 'source-task',
+    );
+    now = now.add(const Duration(minutes: 3));
+
+    final copied = await useCases.copyRecipe(source.id);
+
+    expect(copied.id, isNot(source.id));
+    expect(copied.title, 'Original recipe \u526f\u672c');
+    expect(copied.status, RecipeStatus.draft);
+    expect(copied.favorite, isFalse);
+    expect(copied.sourceId, source.sourceId);
+    expect(copied.tags, source.tags);
+    expect(copied.createdAt, now);
+    expect(copied.ingredients.single.id, isNot(source.ingredients.single.id));
+    expect(copied.steps.single.id, isNot(source.steps.single.id));
+    expect(copied.ingredients.single.name, source.ingredients.single.name);
+    expect(copied.steps.single.description, source.steps.single.description);
+  });
+
+  test('restores, permanently deletes and empties trash in batches', () async {
+    final first = await useCases.createRecipe(draft(title: 'First'));
+    final second = await useCases.createRecipe(draft(title: 'Second'));
+    final third = await useCases.createRecipe(draft(title: 'Third'));
+    await useCases.softDeleteRecipe(first.id);
+    await useCases.softDeleteRecipe(second.id);
+    await useCases.softDeleteRecipe(third.id);
+
+    await useCases.restoreRecipes(<String>[first.id, first.id, second.id]);
+    expect((await useCases.listRecipes()).map((item) => item.id).toSet(), {
+      first.id,
+      second.id,
+    });
+
+    await useCases.softDeleteRecipe(first.id);
+    await useCases.softDeleteRecipe(second.id);
+    await useCases.permanentlyDeleteRecipes(<String>[first.id, second.id]);
+    await expectLater(
+      useCases.getRecipe(first.id, includeDeleted: true),
+      throwsA(isA<RecipeNotFoundException>()),
+    );
+    await expectLater(
+      useCases.getRecipe(second.id, includeDeleted: true),
+      throwsA(isA<RecipeNotFoundException>()),
+    );
+
+    expect(await useCases.emptyRecipeTrash(), 1);
+    await expectLater(
+      useCases.getRecipe(third.id, includeDeleted: true),
+      throwsA(isA<RecipeNotFoundException>()),
+    );
+  });
 
   test('sets favorite and runs the recipe recycle-bin lifecycle', () async {
     final created = await useCases.createRecipe(draft());

@@ -58,8 +58,36 @@ void main() {
         jsonDecode(transport.lastRequest!.body) as Map<String, dynamic>;
     expect(body['model'], 'recipe-model');
     expect((body['messages'] as List<dynamic>).length, 2);
+    expect(body.containsKey('response_format'), isFalse);
   });
 
+  test(
+    'preserves a wrapped content string for downstream validation',
+    () async {
+      const wrapped = '<think>reasoning</think>\n```json\n{}\n```';
+      final transport = FakeLlmTransport(
+        response: LlmHttpResponse(
+          statusCode: 200,
+          body: jsonEncode(<String, Object?>{
+            'choices': <Object?>[
+              <String, Object?>{
+                'message': <String, Object?>{
+                  'reasoning_content': 'must not be used as the final answer',
+                  'content': wrapped,
+                },
+              },
+            ],
+          }),
+        ),
+      );
+
+      final result = await OpenAiCompatibleProvider(
+        transport,
+      ).generate(config: config(), apiKey: '', request: request);
+
+      expect(result.text, wrapped);
+    },
+  );
   test('does not send Authorization when key is empty', () async {
     final transport = FakeLlmTransport(
       response: const LlmHttpResponse(
@@ -164,6 +192,50 @@ void main() {
     );
   });
 
+  test('maps length-truncated content to invalidResponse', () async {
+    final transport = FakeLlmTransport(
+      response: const LlmHttpResponse(
+        statusCode: 200,
+        body:
+            '{"choices":[{"finish_reason":"length","message":{"content":"{\\\"schemaVersion\\\":1"}}]}',
+      ),
+    );
+
+    expect(
+      () => OpenAiCompatibleProvider(
+        transport,
+      ).generate(config: config(), apiKey: '', request: request),
+      throwsA(
+        isA<LlmProviderException>().having(
+          (error) => error.kind,
+          'kind',
+          LlmProviderErrorKind.invalidResponse,
+        ),
+      ),
+    );
+  });
+
+  test('maps blank message content to invalidResponse', () async {
+    final transport = FakeLlmTransport(
+      response: const LlmHttpResponse(
+        statusCode: 200,
+        body: '{"choices":[{"message":{"content":"   \\n  "}}]}',
+      ),
+    );
+
+    expect(
+      () => OpenAiCompatibleProvider(
+        transport,
+      ).generate(config: config(), apiKey: '', request: request),
+      throwsA(
+        isA<LlmProviderException>().having(
+          (error) => error.kind,
+          'kind',
+          LlmProviderErrorKind.invalidResponse,
+        ),
+      ),
+    );
+  });
   test('honors a cancellation token before transport starts', () async {
     final transport = FakeLlmTransport(
       response: const LlmHttpResponse(

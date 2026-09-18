@@ -216,6 +216,18 @@ class PlatformOcrRuntimeBridge implements OcrRuntimeBridge {
         OcrProviderErrorKind.invalidInput,
         'Local OCR input is invalid.',
       ),
+      'image_too_large' => (
+        OcrProviderErrorKind.invalidInput,
+        'The selected image is too large for local OCR.',
+      ),
+      'image_permission_denied' => (
+        OcrProviderErrorKind.invalidInput,
+        'The selected image cannot be accessed.',
+      ),
+      'image_source_unavailable' => (
+        OcrProviderErrorKind.unavailable,
+        'The image must be available on this device before local OCR can run.',
+      ),
       'invalid_response' => (
         OcrProviderErrorKind.invalidResponse,
         'Local OCR returned an invalid response.',

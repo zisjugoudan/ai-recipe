@@ -66,6 +66,46 @@ void main() {
     expect(active!.version, '1.0.0');
   });
 
+  test('persists and reopens the schema 2 runtime contract', () async {
+    final detectorBytes = utf8.encode('fake detector model');
+    final recognizerBytes = utf8.encode('fake recognizer model');
+    final dictionaryBytes = utf8.encode('盐\n糖\n克\n');
+    downloads
+      ..add('https://models.example.test/detector.onnx', detectorBytes)
+      ..add('https://models.example.test/recognizer.onnx', recognizerBytes)
+      ..add('https://models.example.test/dictionary.txt', dictionaryBytes);
+    final runtime = PaddleOcrRuntimeConfig(
+      detector: PaddleOcrDetectionRuntimeConfig(),
+      recognizer: PaddleOcrRecognitionRuntimeConfig(),
+    );
+    final service = newService(root, downloads);
+
+    await service.install(
+      schema2Manifest(
+        detectorBytes: detectorBytes,
+        recognizerBytes: recognizerBytes,
+        dictionaryBytes: dictionaryBytes,
+        runtime: runtime,
+      ),
+    );
+
+    final reopened = newService(root, downloads);
+    final active = await reopened.getActivePackage(
+      'paddleocr-ppocrv5-mobile-zh',
+    );
+    expect(active, isNotNull);
+    expect(active!.manifest.schemaVersion, 2);
+    expect(active.manifest.runtimeConfig!.toJson(), runtime.toJson());
+
+    final manifestFile = File(
+      '${active.rootDirectory.path}${Platform.pathSeparator}manifest.json',
+    );
+    final persisted = Map<String, Object?>.from(
+      jsonDecode(await manifestFile.readAsString()) as Map,
+    );
+    expect(persisted['runtimeConfig'], runtime.toJson());
+  });
+
   test(
     'keeps an activated package when the final status callback fails',
     () async {
@@ -701,6 +741,40 @@ OcrModelManifest manifest({
         sizeBytes: sizeBytes ?? bytes.length,
       ),
     ],
+  );
+}
+
+OcrModelManifest schema2Manifest({
+  required List<int> detectorBytes,
+  required List<int> recognizerBytes,
+  required List<int> dictionaryBytes,
+  required PaddleOcrRuntimeConfig runtime,
+}) {
+  OcrModelFile file(String role, String path, List<int> bytes) {
+    return OcrModelFile(
+      role: role,
+      path: path,
+      downloadUrl: 'https://models.example.test/$path',
+      sha256: sha256.convert(bytes).toString(),
+      sizeBytes: bytes.length,
+    );
+  }
+
+  return OcrModelManifest(
+    schemaVersion: 2,
+    packageId: 'paddleocr-ppocrv5-mobile-zh',
+    version: '2.0.0',
+    engine: 'onnxruntime',
+    platforms: const <OcrRuntimePlatform>{OcrRuntimePlatform.android},
+    languages: const <String>['zh-Hans', 'en'],
+    minAppVersion: '0.1.0',
+    license: 'Apache-2.0',
+    files: <OcrModelFile>[
+      file('detector', 'detector.onnx', detectorBytes),
+      file('recognizer', 'recognizer.onnx', recognizerBytes),
+      file('dictionary', 'dictionary.txt', dictionaryBytes),
+    ],
+    runtimeConfig: runtime,
   );
 }
 

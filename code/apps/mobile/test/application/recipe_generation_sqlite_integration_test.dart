@@ -83,7 +83,7 @@ void main() {
 
     final result = await processor.process(
       content,
-      onProgress: (stage, progress) async {},
+      onProgress: (_, _, [detail]) async {},
     );
 
     await appDatabase.close();

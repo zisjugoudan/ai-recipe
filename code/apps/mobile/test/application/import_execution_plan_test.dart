@@ -22,14 +22,18 @@ void main() {
     );
   });
 
-  test('local and cloud OCR map to their own capabilities', () {
+  test('OCR and multimodal image recognition map to their own capabilities', () {
     expect(
-      const ImportExecutionPlan(ocr: ImportOcrRoute.local).requiredCapabilities,
+      const ImportExecutionPlan(
+        imageRecognition: ImportImageRecognitionRoute.ocr,
+      ).requiredCapabilities,
       contains(AppCapability.localOcr),
     );
     expect(
-      const ImportExecutionPlan(ocr: ImportOcrRoute.cloud).requiredCapabilities,
-      contains(AppCapability.cloudOcr),
+      const ImportExecutionPlan(
+        imageRecognition: ImportImageRecognitionRoute.multimodal,
+      ).requiredCapabilities,
+      contains(AppCapability.multimodalLlm),
     );
   });
 

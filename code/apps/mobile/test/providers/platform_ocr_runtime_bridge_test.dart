@@ -62,6 +62,24 @@ void main() {
     expect(args.keys, unorderedEquals(<Object?>['modelDirectory', 'manifest']));
   });
 
+  test('healthCheck forwards the complete schema 2 runtime contract', () async {
+    late Map<Object?, Object?> manifest;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          manifest = Map<Object?, Object?>.from(
+            (call.arguments as Map<Object?, Object?>)['manifest']
+                as Map<Object?, Object?>,
+          );
+          return null;
+        });
+
+    final package = packageAtV2(root);
+    await bridge.healthCheck(package);
+
+    expect(manifest['schemaVersion'], 2);
+    expect(manifest['runtimeConfig'], package.manifest.runtimeConfig!.toJson());
+  });
+
   test('recognize parses strict OCR document', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
@@ -122,6 +140,41 @@ void main() {
     );
   });
 
+  test('maps image input failures to stable provider errors', () async {
+    const cases = <String, OcrProviderErrorKind>{
+      'image_too_large': OcrProviderErrorKind.invalidInput,
+      'image_permission_denied': OcrProviderErrorKind.invalidInput,
+      'image_source_unavailable': OcrProviderErrorKind.unavailable,
+    };
+
+    for (final entry in cases.entries) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            throw PlatformException(
+              code: entry.key,
+              message: 'native path and stack details must not escape',
+            );
+          });
+
+      await expectLater(
+        bridge.recognize(
+          input: OcrImageInput(localAssetId: 'asset-1', order: 0),
+          package: packageAt(root),
+        ),
+        throwsA(
+          isA<OcrProviderException>()
+              .having((error) => error.kind, 'kind', entry.value)
+              .having(
+                (error) => error.message,
+                'message',
+                isNot(contains('native path')),
+              ),
+        ),
+        reason: entry.key,
+      );
+    }
+  });
+
   test('rejects malformed text geometry', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
@@ -178,5 +231,40 @@ OcrInstalledModelPackage packageAt(Directory root) {
         ),
       ],
     ),
+  );
+}
+
+OcrInstalledModelPackage packageAtV2(Directory root) {
+  return OcrInstalledModelPackage(
+    rootDirectory: root,
+    manifest: OcrModelManifest(
+      schemaVersion: 2,
+      packageId: 'paddleocr-ppocrv5-mobile-zh',
+      version: '2.0.0',
+      engine: 'onnxruntime',
+      platforms: const <OcrRuntimePlatform>{OcrRuntimePlatform.android},
+      languages: const <String>['zh-Hans'],
+      minAppVersion: '0.1.0',
+      license: 'Apache-2.0',
+      files: <OcrModelFile>[
+        modelFile('detector', 'detector.onnx'),
+        modelFile('recognizer', 'recognizer.onnx'),
+        modelFile('dictionary', 'dictionary.txt'),
+      ],
+      runtimeConfig: PaddleOcrRuntimeConfig(
+        detector: PaddleOcrDetectionRuntimeConfig(),
+        recognizer: PaddleOcrRecognitionRuntimeConfig(),
+      ),
+    ),
+  );
+}
+
+OcrModelFile modelFile(String role, String path) {
+  return OcrModelFile(
+    role: role,
+    path: path,
+    downloadUrl: 'https://models.example.test/$path',
+    sha256: '0' * 64,
+    sizeBytes: 1,
   );
 }

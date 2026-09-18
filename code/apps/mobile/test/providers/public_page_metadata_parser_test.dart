@@ -32,6 +32,57 @@ void main() {
     expect(metadata.videoUrls, isEmpty);
   });
 
+  test(
+    'extracts Xiaohongshu PC webshare initial state and preferred images',
+    () {
+      final metadata = parser.parse(
+        fixture('xiaohongshu_pc_webshare.html'),
+        baseUri: Uri.parse(
+          'https://www.xiaohongshu.com/explore/public-note-fixture',
+        ),
+        contentType: 'text/html; charset=utf-8',
+      );
+
+      expect(metadata.title, '网友没骗我！干锅花菜真的好吃哭');
+      expect(metadata.description, '花菜先煸香，再加五花肉和酱汁；字符串 undefined 必须保持原样。');
+      expect(metadata.authorName, '厨房研究员');
+      expect(metadata.publishedAt, DateTime.utc(2026, 8, 1));
+      expect(metadata.imageUrls, <String>[
+        'https://sns-webpic-qc.xhscdn.com/fixture/cover.jpg',
+        'https://sns-webpic-qc.xhscdn.com/fixture/step-2.jpg',
+        'https://sns-webpic-qc.xhscdn.com/fixture/step-3.jpg',
+        'https://sns-webpic-qc.xhscdn.com/fixture/step-4.jpg',
+      ]);
+    },
+  );
+
+  test('does not use the generic Xiaohongshu shell title as note title', () {
+    final metadata = parser.parse(
+      '''
+      <meta property="og:title" content="小红书">
+      <title>小红书</title>
+      <script>
+        window.__INITIAL_STATE__ = {
+          "noteData": {
+            "data": {
+              "noteData": {
+                "desc": "Public note body",
+                "optional": undefined
+              }
+            }
+          }
+        };
+      </script>
+      ''',
+      baseUri: Uri.parse('https://www.xiaohongshu.com/explore/shell'),
+      contentType: 'text/html',
+    );
+
+    expect(metadata.title, isNull);
+    expect(metadata.description, 'Public note body');
+    expect(metadata.hasText, isTrue);
+  });
+
   test('extracts Douyin video, cover, author, and publication time', () {
     final metadata = parser.parse(
       fixture('douyin_public.html'),

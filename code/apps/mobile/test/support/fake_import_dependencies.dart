@@ -1,9 +1,14 @@
-﻿import 'package:ai_recipe/application/importing/import_pipeline_contracts.dart';
+import 'package:ai_recipe/application/importing/import_pipeline_contracts.dart';
 import 'package:ai_recipe/domain/importing/import_cancellation_token.dart';
 import 'package:ai_recipe/domain/importing/import_content.dart';
 import 'package:ai_recipe/domain/importing/import_content_adapter.dart';
 import 'package:ai_recipe/domain/importing/import_task.dart';
 import 'package:ai_recipe/domain/importing/import_task_repository.dart';
+
+Future<void> discardImportRecipeDraft({
+  required String recipeId,
+  required String sourceId,
+}) async {}
 
 class MemoryImportTaskRepository implements ImportTaskRepository {
   final Map<String, ImportTask> tasks = <String, ImportTask>{};
@@ -63,9 +68,46 @@ class MemoryImportTaskRepository implements ImportTaskRepository {
   }
 
   @override
-  Future<void> upsertTask(ImportTask task) async {
+  Future<void> upsertTask(ImportTask task, {int? expectedLocalVersion}) async {
+    final current = tasks[task.id];
+    if (expectedLocalVersion == null) {
+      if (current != null) {
+        throw ImportTaskWriteConflictException(
+          id: task.id,
+          expectedLocalVersion: null,
+          actualLocalVersion: current.localVersion,
+        );
+      }
+    } else {
+      if (task.localVersion != expectedLocalVersion + 1) {
+        throw ArgumentError.value(
+          task.localVersion,
+          'task.localVersion',
+          'must be exactly one greater than expectedLocalVersion',
+        );
+      }
+      if (current?.localVersion != expectedLocalVersion) {
+        throw ImportTaskWriteConflictException(
+          id: task.id,
+          expectedLocalVersion: expectedLocalVersion,
+          actualLocalVersion: current?.localVersion,
+        );
+      }
+    }
     tasks[task.id] = task;
     savedTasks.add(task);
+  }
+
+  final Map<String, ImportContent> evidence = <String, ImportContent>{};
+
+  @override
+  Future<void> saveImportEvidence(String taskId, ImportContent content) async {
+    evidence[taskId] = content;
+  }
+
+  @override
+  Future<ImportContent?> loadImportEvidence(String taskId) async {
+    return evidence[taskId];
   }
 }
 

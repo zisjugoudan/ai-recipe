@@ -31,7 +31,7 @@ class PlatformOcrProvider implements OcrProvider {
     if (package == null) {
       throw const OcrProviderException(
         kind: OcrProviderErrorKind.modelNotInstalled,
-        message: 'Local OCR model package is not installed.',
+        message: '本地 OCR 模型尚未安装，请先在 OCR 设置中安装模型包。',
       );
     }
 
@@ -39,7 +39,7 @@ class PlatformOcrProvider implements OcrProvider {
     if (!probe.runtimeAvailable || !probe.recognitionSupported) {
       throw const OcrProviderException(
         kind: OcrProviderErrorKind.unavailable,
-        message: 'Local OCR recognition is not available yet.',
+        message: '本地 OCR 识别当前不可用，请检查 OCR 设置后重试。',
       );
     }
 

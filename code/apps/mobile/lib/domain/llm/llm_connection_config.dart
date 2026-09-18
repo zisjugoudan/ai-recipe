@@ -1,3 +1,4 @@
+import 'llm_models.dart';
 import 'llm_provider_type.dart';
 
 class LlmConnectionConfig {
@@ -9,7 +10,10 @@ class LlmConnectionConfig {
     required this.secretRef,
     required this.model,
     this.requestTimeout = const Duration(seconds: 120),
-  }) : baseUrl = normalizeAndValidateBaseUrl(baseUrl) {
+    // 深度思考开关（PERF-002，ADR-0031）：默认快速；旧配置缺失时回退 fast。
+    LlmReasoningMode reasoningMode = LlmReasoningMode.fast,
+  }) : baseUrl = normalizeAndValidateBaseUrl(baseUrl),
+       reasoningMode = reasoningMode {
     if (id.trim().isEmpty) throw const FormatException('配置 ID 不能为空');
     if (name.trim().isEmpty) throw const FormatException('配置名称不能为空');
     if (secretRef.trim().isEmpty) throw const FormatException('密钥引用不能为空');
@@ -27,6 +31,9 @@ class LlmConnectionConfig {
   final String model;
   final Duration requestTimeout;
 
+  /// 推理深度：fast=快速（默认）/ deep=深度思考。最终结构化生成跟随该值。
+  final LlmReasoningMode reasoningMode;
+
   bool get usesCleartextHttp => Uri.parse(baseUrl).scheme == 'http';
 
   Map<String, Object> toJson() => <String, Object>{
@@ -37,6 +44,7 @@ class LlmConnectionConfig {
     'secretRef': secretRef,
     'model': model,
     'requestTimeoutMs': requestTimeout.inMilliseconds,
+    'reasoningMode': reasoningMode.name,
   };
 
   factory LlmConnectionConfig.fromJson(Map<String, Object?> json) {
@@ -50,7 +58,18 @@ class LlmConnectionConfig {
       secretRef: json['secretRef'] as String,
       model: json['model'] as String,
       requestTimeout: Duration(milliseconds: json['requestTimeoutMs'] as int),
+      reasoningMode: _parseReasoningMode(json['reasoningMode']),
     );
+  }
+
+  /// 兼容旧配置：字段缺失或取值非法时回退 fast。
+  static LlmReasoningMode _parseReasoningMode(Object? value) {
+    if (value is String) {
+      for (final mode in LlmReasoningMode.values) {
+        if (mode.name == value) return mode;
+      }
+    }
+    return LlmReasoningMode.fast;
   }
 
   static String normalizeAndValidateBaseUrl(String value) {

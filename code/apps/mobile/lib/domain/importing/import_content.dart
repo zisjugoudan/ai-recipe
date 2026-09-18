@@ -11,6 +11,30 @@ enum ImportTextFragmentKind {
   metadata,
 }
 
+/// 文本证据的来源类型（BUG-006，ADR-0028：OCR 与多模态作为独立证据生产者）。
+///
+/// 结构化菜谱 LLM 只消费经过来源标注的证据；OCR 只负责忠实文字提取，
+/// 多模态只负责视觉观察，不互相伪装。
+enum ImportTextFragmentSourceType {
+  /// 作者明确正文、配料表与平台原始字幕。
+  authorText,
+
+  /// 本地/云端 OCR 原文（含坐标、顺序、语言、置信度）。
+  ocr,
+
+  /// 平台字幕（未转写）。
+  subtitle,
+
+  /// ASR 转写。
+  asr,
+
+  /// 多模态 LLM 视觉观察（菜品、食材外观、动作、器具、步骤场景）。
+  visionObservation,
+
+  /// 结构化生成阶段允许的模型推断。
+  inference,
+}
+
 enum ImportMediaKind { image, video, audio }
 
 enum ImportContentWarning {
@@ -21,6 +45,12 @@ enum ImportContentWarning {
   requiresOcr,
   requiresAsr,
   redirected,
+
+  /// 自动融合中多模态视觉观察失败（OCR 结果已保留）。
+  visionIncomplete,
+
+  /// 自动融合中 OCR 文字提取失败（多模态视觉观察已保留）。
+  ocrIncomplete,
 }
 
 class ImportTextFragment {
@@ -35,6 +65,7 @@ class ImportTextFragment {
     this.sourceStartMs,
     this.sourceEndMs,
     String? speakerLabel,
+    this.sourceType = ImportTextFragmentSourceType.authorText,
   }) : text = _requireText(text, 'text'),
        sourceProvider = _optionalText(sourceProvider),
        sourceLanguage = _optionalText(sourceLanguage),
@@ -88,6 +119,9 @@ class ImportTextFragment {
   final int? sourceEndMs;
   final String? speakerLabel;
 
+  /// 证据来源类型（默认作者正文；OCR/多模态处理器显式标记）。
+  final ImportTextFragmentSourceType sourceType;
+
   Map<String, Object?> toJson() => <String, Object?>{
     'kind': kind.name,
     'text': text,
@@ -99,6 +133,7 @@ class ImportTextFragment {
     'sourceStartMs': sourceStartMs,
     'sourceEndMs': sourceEndMs,
     'speakerLabel': speakerLabel,
+    'sourceType': sourceType.name,
   };
 }
 
@@ -222,6 +257,73 @@ class ImportContent {
     'media': media.map((item) => item.toJson()).toList(),
     'warnings': warnings.map((warning) => warning.name).toList()..sort(),
   };
+
+  /// 从 [toJson] 的输出反序列化出原始内容证据，用于把证据持久化到本地后恢复。
+  factory ImportContent.fromJson(Map<String, Object?> json) {
+    final capturedAt = DateTime.parse(json['capturedAt']! as String).toUtc();
+    return ImportContent(
+      source: ImportSourceLink(
+        sourceUrl: json['sourceUrl']! as String,
+        normalizedUrl: (json['normalizedUrl'] as String?) ??
+            json['sourceUrl']! as String,
+        platform: ImportSourcePlatform.values.byName(
+          json['sourcePlatform']! as String,
+        ),
+      ),
+      resolvedUrl: json['resolvedUrl']! as String,
+      contentType: ImportContentType.values.byName(
+        json['contentType']! as String,
+      ),
+      title: json['title'] as String?,
+      description: json['description'] as String?,
+      authorName: json['authorName'] as String?,
+      publishedAt: json['publishedAt'] == null
+          ? null
+          : DateTime.parse(json['publishedAt']! as String),
+      capturedAt: capturedAt,
+      textFragments: (json['textFragments'] as List<Object?>? ?? const [])
+          .map((item) {
+            final map = item! as Map<String, Object?>;
+            return ImportTextFragment(
+              kind: ImportTextFragmentKind.values.byName(
+                map['kind']! as String,
+              ),
+              text: map['text']! as String,
+              order: map['order']! as int,
+              confidence: map['confidence'] as double?,
+              sourceMediaOrder: map['sourceMediaOrder'] as int?,
+              sourceProvider: map['sourceProvider'] as String?,
+              sourceLanguage: map['sourceLanguage'] as String?,
+              sourceStartMs: map['sourceStartMs'] as int?,
+              sourceEndMs: map['sourceEndMs'] as int?,
+              speakerLabel: map['speakerLabel'] as String?,
+              sourceType: ImportTextFragmentSourceType.values.byName(
+                (map['sourceType'] as String?) ??
+                    ImportTextFragmentSourceType.authorText.name,
+              ),
+            );
+          })
+          .toList(),
+      media: (json['media'] as List<Object?>? ?? const [])
+          .map((item) {
+            final map = item! as Map<String, Object?>;
+            return ImportMediaReference(
+              kind: ImportMediaKind.values.byName(map['kind']! as String),
+              remoteUrl: map['remoteUrl'] as String?,
+              localAssetId: map['localAssetId'] as String?,
+              mimeType: map['mimeType'] as String?,
+              width: map['width'] as int?,
+              height: map['height'] as int?,
+              durationMs: map['durationMs'] as int?,
+              order: map['order']! as int,
+            );
+          })
+          .toList(),
+      warnings: (json['warnings'] as List<Object?>? ?? const [])
+          .map((name) => ImportContentWarning.values.byName(name! as String))
+          .toSet(),
+    );
+  }
 }
 
 String _requireText(String value, String name) {

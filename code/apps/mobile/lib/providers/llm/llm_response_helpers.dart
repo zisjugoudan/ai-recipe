@@ -46,10 +46,52 @@ Never throwForStatus(int statusCode, String body) {
       statusCode: statusCode,
     );
   }
+  if (statusCode == 405) {
+    throw LlmProviderException(
+      LlmProviderErrorKind.methodNotAllowed,
+      '接口类型错误，请检查是否填到了网页或错误的 API 路径$suffix',
+      statusCode: statusCode,
+    );
+  }
+  if (statusCode == 408 || statusCode == 504) {
+    throw LlmProviderException(
+      LlmProviderErrorKind.providerGatewayTimeout,
+      '服务端或网关响应超时，请稍后重试或检查服务状态$suffix',
+      statusCode: statusCode,
+    );
+  }
+  if (statusCode == 409 || statusCode == 423) {
+    throw LlmProviderException(
+      LlmProviderErrorKind.modelBusy,
+      '模型正在加载或资源被占用，请稍后重试$suffix',
+      statusCode: statusCode,
+    );
+  }
+  if (statusCode == 413) {
+    throw LlmProviderException(
+      LlmProviderErrorKind.payloadTooLarge,
+      '请求体过大，请压缩图片或减少内容$suffix',
+      statusCode: statusCode,
+    );
+  }
+  if (statusCode == 415) {
+    throw LlmProviderException(
+      LlmProviderErrorKind.unsupportedMediaType,
+      '图片类型不支持，请使用 JPG、PNG 或 WebP$suffix',
+      statusCode: statusCode,
+    );
+  }
   if (statusCode == 429) {
     throw LlmProviderException(
       LlmProviderErrorKind.rateLimited,
       '请求过于频繁或额度不足，请稍后重试$suffix',
+      statusCode: statusCode,
+    );
+  }
+  if (statusCode == 400 || statusCode == 422) {
+    throw LlmProviderException(
+      LlmProviderErrorKind.badRequest,
+      '请求参数与 Provider 协议不兼容，请核对图片字段、模型能力和地址$suffix',
       statusCode: statusCode,
     );
   }

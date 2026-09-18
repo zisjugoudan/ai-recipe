@@ -1,4 +1,4 @@
-enum ImportSourcePlatform { xiaohongshu, douyin }
+enum ImportSourcePlatform { xiaohongshu, douyin, web }
 
 enum ImportTaskStatus {
   queued,
@@ -103,10 +103,8 @@ class ImportSourceLink {
         ImportSourcePlatform.xiaohongshu,
       _ when host.endsWith('.douyin.com') || host.endsWith('.iesdouyin.com') =>
         ImportSourcePlatform.douyin,
-      _ => throw const ImportTaskInputException(
-        ImportTaskErrorCode.unsupportedPlatform,
-        '当前只支持小红书和抖音链接。',
-      ),
+      // 其他任意网页统一归为通用 web 平台，由浏览器内核（WebView）抓取。
+      _ => ImportSourcePlatform.web,
     };
 
     final normalizedWithEmptyFragment = uri
@@ -140,7 +138,12 @@ class ImportTask {
     this.errorCode,
     String? errorMessage,
     required this.retryable,
+    // 进度详情（IMAGE-002 优化）：运行中实时展示当前操作说明，例如
+    // “已获取到正文”“正在识别第 2/3 张图片”“识别为 3 份独立菜谱，
+    // 正在生成第 1/3 份草稿”。仅展示用，不影响进度校验。
+    String? progressDetail,
     String? resultRecipeId,
+    List<String> additionalResultRecipeIds = const <String>[],
     required this.createdAt,
     required this.updatedAt,
     this.startedAt,
@@ -153,7 +156,10 @@ class ImportTask {
        sourceUrl = _requireText(sourceUrl, 'sourceUrl'),
        normalizedUrl = _requireText(normalizedUrl, 'normalizedUrl'),
        errorMessage = _optionalText(errorMessage),
-       resultRecipeId = _optionalText(resultRecipeId) {
+       progressDetail = _optionalText(progressDetail),
+       resultRecipeId = _optionalText(resultRecipeId),
+       additionalResultRecipeIds =
+           _normalizeAdditionalIds(resultRecipeId, additionalResultRecipeIds) {
     _validate();
   }
 
@@ -192,7 +198,18 @@ class ImportTask {
   final ImportTaskErrorCode? errorCode;
   final String? errorMessage;
   final bool retryable;
+
+  /// 进度详情：运行中实时展示的当前操作说明（仅展示，不影响进度校验）。
+  final String? progressDetail;
+
   final String? resultRecipeId;
+
+  /// 附加草稿 ID（多图“每张图独立菜谱”一次导入产出多个草稿，IMAGE-002）。
+  final List<String> additionalResultRecipeIds;
+
+  /// 任务关联的全部草稿 ID（主草稿 + 附加草稿）。
+  List<String> get allResultRecipeIds =>
+      <String>[if (resultRecipeId != null) resultRecipeId!, ...additionalResultRecipeIds];
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? startedAt;
@@ -221,10 +238,43 @@ class ImportTask {
     );
   }
 
+  ImportTask startWithFallback(DateTime now) {
+    // 允许三类任务用内容运行：排队任务（快速导入"拍照选图/剪贴板"新建的
+    // 占位任务，IMPORT-009）与失败/已取消任务（人工降级输入）。
+    // 排队任务直接进入 extracting（跳过 fetching，不抓取公开链接），
+    // 图片/文本内容由调用方通过 runImportWithLocalImage / runImportWithText 提供。
+    if (status != ImportTaskStatus.queued &&
+        status != ImportTaskStatus.failed &&
+        status != ImportTaskStatus.cancelled) {
+      throw const ImportTaskTransitionException(
+        '只有排队、失败或已取消的任务可以使用内容运行。',
+      );
+    }
+    _requireCurrentTime(now);
+    return _copy(
+      status: ImportTaskStatus.running,
+      stage: ImportTaskStage.extracting,
+      progress: 0.25,
+      errorCode: null,
+      errorMessage: null,
+      retryable: false,
+      resultRecipeId: null,
+      progressDetail: null,
+      updatedAt: now,
+      startedAt: now,
+      completedAt: null,
+      cancelledAt: null,
+      nextRetryAt: null,
+      localVersion: localVersion + 1,
+    );
+  }
+
   ImportTask advance({
     required ImportTaskStage nextStage,
     required double nextProgress,
     required DateTime now,
+    // 进度详情（可选）：更新当前操作说明；不传则保留已有详情。
+    String? progressDetail,
   }) {
     _requireStatus(ImportTaskStatus.running, '只有运行中的任务可以推进阶段。');
     _requireCurrentTime(now);
@@ -241,11 +291,20 @@ class ImportTask {
       throw const ImportTaskTransitionException('任务进度必须在 0 到 1 之间。');
     }
     if (nextStage == stage && nextProgress == progress) {
-      return this;
+      // 进度与阶段不变：仅当详情有变化时才生成新版本，否则原样返回。
+      final detailChanged = progressDetail != null &&
+          progressDetail != this.progressDetail;
+      if (!detailChanged) return this;
+      return _copy(
+        progressDetail: progressDetail,
+        updatedAt: now,
+        localVersion: localVersion + 1,
+      );
     }
     return _copy(
       stage: nextStage,
       progress: nextProgress,
+      progressDetail: progressDetail,
       updatedAt: now,
       localVersion: localVersion + 1,
     );
@@ -253,6 +312,7 @@ class ImportTask {
 
   ImportTask markNeedsReview({
     required String recipeId,
+    List<String> additionalRecipeIds = const <String>[],
     required DateTime now,
   }) {
     _requireStatus(ImportTaskStatus.running, '只有运行中的任务可以进入待确认状态。');
@@ -265,6 +325,26 @@ class ImportTask {
       stage: ImportTaskStage.review,
       progress: 1,
       resultRecipeId: _requireText(recipeId, 'recipeId'),
+      additionalResultRecipeIds: additionalRecipeIds,
+      updatedAt: now,
+      localVersion: localVersion + 1,
+    );
+  }
+
+  /// 待确认任务更换关联草稿（用于“重新生成”）。
+  ///
+  /// 只允许在 `needsReview` 状态调用：任务阶段保持 review、进度保持 1，
+  /// 仅更新 resultRecipeId、附加草稿、updatedAt 和 localVersion。
+  ImportTask reassignResultRecipe({
+    required String recipeId,
+    List<String> additionalRecipeIds = const <String>[],
+    required DateTime now,
+  }) {
+    _requireStatus(ImportTaskStatus.needsReview, '只有待确认任务可以更换草稿。');
+    _requireCurrentTime(now);
+    return _copy(
+      resultRecipeId: _requireText(recipeId, 'recipeId'),
+      additionalResultRecipeIds: additionalRecipeIds,
       updatedAt: now,
       localVersion: localVersion + 1,
     );
@@ -306,6 +386,7 @@ class ImportTask {
       errorMessage: _optionalText(message),
       retryable: effectiveRetryable,
       resultRecipeId: null,
+      progressDetail: null,
       completedAt: null,
       cancelledAt: null,
       nextRetryAt: retryAt,
@@ -329,6 +410,7 @@ class ImportTask {
       errorMessage: null,
       retryable: false,
       resultRecipeId: null,
+      progressDetail: null,
       nextRetryAt: null,
       updatedAt: now,
       cancelledAt: now,
@@ -353,6 +435,7 @@ class ImportTask {
       errorMessage: null,
       retryable: false,
       resultRecipeId: null,
+      progressDetail: null,
       startedAt: null,
       completedAt: null,
       cancelledAt: null,
@@ -367,10 +450,18 @@ class ImportTask {
       return this;
     }
     _requireCurrentTime(now);
+    if (stage != ImportTaskStage.fetching) {
+      return fail(
+        code: ImportTaskErrorCode.interrupted,
+        message: '人工降级处理已中断，请重新选择输入方式。',
+        canRetry: false,
+        now: now,
+      );
+    }
     if (attempt >= maxAttempts) {
       return fail(
         code: ImportTaskErrorCode.interrupted,
-        message: '应用退出时任务仍在运行，且已达到最大尝试次数。',
+        message: '公开内容导入已中断，且已达到最大尝试次数。',
         canRetry: false,
         now: now,
       );
@@ -384,6 +475,7 @@ class ImportTask {
       errorMessage: null,
       retryable: false,
       resultRecipeId: null,
+      progressDetail: null,
       startedAt: null,
       completedAt: null,
       cancelledAt: null,
@@ -467,6 +559,8 @@ class ImportTask {
     Object? errorMessage = _notProvided,
     bool? retryable,
     Object? resultRecipeId = _notProvided,
+    Object? additionalResultRecipeIds = _notProvided,
+    Object? progressDetail = _notProvided,
     DateTime? updatedAt,
     Object? startedAt = _notProvided,
     Object? completedAt = _notProvided,
@@ -494,6 +588,15 @@ class ImportTask {
       resultRecipeId: identical(resultRecipeId, _notProvided)
           ? this.resultRecipeId
           : resultRecipeId as String?,
+      additionalResultRecipeIds: identical(
+        additionalResultRecipeIds,
+        _notProvided,
+      )
+          ? this.additionalResultRecipeIds
+          : additionalResultRecipeIds as List<String>,
+      progressDetail: identical(progressDetail, _notProvided)
+          ? this.progressDetail
+          : progressDetail as String?,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       startedAt: identical(startedAt, _notProvided)
@@ -555,5 +658,20 @@ class ImportTask {
   static String? _optionalText(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  /// 规范化附加草稿 ID：去空白、去重、排除与主草稿相同的 ID。
+  static List<String> _normalizeAdditionalIds(
+    String? primary,
+    List<String> additional,
+  ) {
+    final result = <String>[];
+    for (final id in additional) {
+      final trimmed = id.trim();
+      if (trimmed.isEmpty || trimmed == primary) continue;
+      if (result.contains(trimmed)) continue;
+      result.add(trimmed);
+    }
+    return List<String>.unmodifiable(result);
   }
 }

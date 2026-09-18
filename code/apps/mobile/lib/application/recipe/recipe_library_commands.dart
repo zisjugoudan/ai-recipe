@@ -1,3 +1,4 @@
+import 'package:ai_recipe/domain/ingredient/ingredient_spec.dart';
 import 'package:ai_recipe/domain/recipe/recipe.dart';
 
 class RecipeIngredientInput {
@@ -11,6 +12,14 @@ class RecipeIngredientInput {
     this.preparation,
     List<String> substitutes = const <String>[],
     this.confidence,
+    this.baseConceptId,
+    this.baseConceptName,
+    this.cut,
+    this.fatLevel,
+    this.form,
+    this.processing,
+    this.specConfidence,
+    this.specSource = IngredientSpecSource.unknown,
   }) : substitutes = List<String>.unmodifiable(substitutes);
 
   final String? id;
@@ -22,6 +31,16 @@ class RecipeIngredientInput {
   final String? preparation;
   final List<String> substitutes;
   final double? confidence;
+
+  // ---- ADR-0022：可选的显式规格（编辑页回显时透传）----
+  final String? baseConceptId;
+  final String? baseConceptName;
+  final IngredientCut? cut;
+  final IngredientFatLevel? fatLevel;
+  final IngredientForm? form;
+  final IngredientProcessing? processing;
+  final double? specConfidence;
+  final IngredientSpecSource specSource;
 }
 
 class RecipeStepInput {
@@ -53,6 +72,7 @@ class RecipeDraftInput {
     required this.title,
     this.description,
     this.coverImage,
+    List<String> images = const <String>[],
     this.servings,
     this.prepTimeMinutes,
     this.cookTimeMinutes,
@@ -64,13 +84,17 @@ class RecipeDraftInput {
     List<RecipeIngredientInput> ingredients = const <RecipeIngredientInput>[],
     List<RecipeStepInput> steps = const <RecipeStepInput>[],
     List<String> categoryIds = const <String>[],
-  }) : ingredients = List<RecipeIngredientInput>.unmodifiable(ingredients),
+    List<String> tags = const <String>[],
+  }) : images = List<String>.unmodifiable(images),
+       ingredients = List<RecipeIngredientInput>.unmodifiable(ingredients),
        steps = List<RecipeStepInput>.unmodifiable(steps),
-       categoryIds = List<String>.unmodifiable(categoryIds);
+       categoryIds = List<String>.unmodifiable(categoryIds),
+       tags = List<String>.unmodifiable(tags);
 
   final String title;
   final String? description;
   final String? coverImage;
+  final List<String> images;
   final int? servings;
   final int? prepTimeMinutes;
   final int? cookTimeMinutes;
@@ -82,6 +106,7 @@ class RecipeDraftInput {
   final List<RecipeIngredientInput> ingredients;
   final List<RecipeStepInput> steps;
   final List<String> categoryIds;
+  final List<String> tags;
 }
 
 class RecipeCategoryInput {

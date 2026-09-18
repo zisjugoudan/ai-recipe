@@ -80,23 +80,33 @@ class GeneratedRecipeDraft {
 }
 
 class RecipeGenerationSchemaParser {
-  const RecipeGenerationSchemaParser();
+  const RecipeGenerationSchemaParser({
+    this.maxResponseCharacters = 262144,
+    this.maxReasoningCharacters = 65536,
+  }) : assert(maxResponseCharacters > 0),
+       assert(maxReasoningCharacters >= 0),
+       assert(maxReasoningCharacters < maxResponseCharacters);
 
+  final int maxResponseCharacters;
+  final int maxReasoningCharacters;
+
+  // 注意：字段名一律使用小写，配合 _asObject 中的键小写归一化，
+  // 以容忍 LLM 输出不同大小写（如 heatlevel / heatLevel）导致解析失败。
   static const Set<String> _rootKeys = <String>{
-    'schemaVersion',
+    'schemaversion',
     'title',
     'description',
     'servings',
-    'prepTimeMinutes',
-    'cookTimeMinutes',
-    'totalTimeMinutes',
+    'preptimeminutes',
+    'cooktimeminutes',
+    'totaltimeminutes',
     'difficulty',
     'notes',
     'ingredients',
     'steps',
   };
   static const Set<String> _ingredientKeys = <String>{
-    'groupName',
+    'groupname',
     'name',
     'quantity',
     'unit',
@@ -107,9 +117,9 @@ class RecipeGenerationSchemaParser {
   };
   static const Set<String> _stepKeys = <String>{
     'description',
-    'durationSeconds',
+    'durationseconds',
     'temperature',
-    'heatLevel',
+    'heatlevel',
     'cookware',
     'tips',
     'confidence',
@@ -125,7 +135,7 @@ class RecipeGenerationSchemaParser {
     }
     final root = _asObject(decoded, '根对象');
     _rejectUnknownKeys(root, _rootKeys, '根对象');
-    if (_requiredInt(root, 'schemaVersion', min: 1, max: 1) != 1) {
+    if (_requiredInt(root, 'schemaversion', min: 1, max: 1) != 1) {
       throw const RecipeGenerationSchemaException('Schema 版本不受支持。');
     }
 
@@ -143,19 +153,19 @@ class RecipeGenerationSchemaParser {
       servings: _optionalInt(root, 'servings', min: 0, max: 1000),
       prepTimeMinutes: _optionalInt(
         root,
-        'prepTimeMinutes',
+        'preptimeminutes',
         min: 0,
         max: 10080,
       ),
       cookTimeMinutes: _optionalInt(
         root,
-        'cookTimeMinutes',
+        'cooktimeminutes',
         min: 0,
         max: 10080,
       ),
       totalTimeMinutes: _optionalInt(
         root,
-        'totalTimeMinutes',
+        'totaltimeminutes',
         min: 0,
         max: 20160,
       ),
@@ -166,7 +176,7 @@ class RecipeGenerationSchemaParser {
           final item = _asObject(entry.$2, '食材 ${entry.$1 + 1}');
           _rejectUnknownKeys(item, _ingredientKeys, '食材 ${entry.$1 + 1}');
           return GeneratedIngredientDraft(
-            groupName: _optionalString(item, 'groupName', maxLength: 100),
+            groupName: _optionalString(item, 'groupname', maxLength: 100),
             name: _requiredString(item, 'name', maxLength: 200),
             quantity: _optionalString(item, 'quantity', maxLength: 100),
             unit: _optionalString(item, 'unit', maxLength: 50),
@@ -190,12 +200,12 @@ class RecipeGenerationSchemaParser {
             description: _requiredString(item, 'description', maxLength: 4000),
             durationSeconds: _optionalInt(
               item,
-              'durationSeconds',
+              'durationseconds',
               min: 0,
               max: 86400,
             ),
             temperature: _optionalString(item, 'temperature', maxLength: 100),
-            heatLevel: _optionalString(item, 'heatLevel', maxLength: 100),
+            heatLevel: _optionalString(item, 'heatlevel', maxLength: 100),
             cookware: _optionalString(item, 'cookware', maxLength: 200),
             tips: _optionalString(item, 'tips', maxLength: 1000),
             confidence: _optionalConfidence(item, 'confidence'),
@@ -206,25 +216,146 @@ class RecipeGenerationSchemaParser {
   }
 
   String _extractJsonPayload(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) {
+    if (value.length > maxResponseCharacters) {
+      throw const RecipeGenerationSchemaException('AI 返回内容超过大小限制。');
+    }
+
+    var normalized = value.trim();
+    if (normalized.isEmpty) {
       throw const RecipeGenerationSchemaException('AI 返回了空内容。');
     }
-    if (!trimmed.startsWith('```')) {
-      return trimmed;
+
+    normalized = _removeReasoningPrefix(normalized);
+    return _extractUniqueJsonObject(normalized);
+  }
+
+  String _removeReasoningPrefix(String value) {
+    final openTag = RegExp(r'<think>', caseSensitive: false);
+    final closeTag = RegExp(r'</think>', caseSensitive: false);
+    final firstOpen = openTag.firstMatch(value);
+    final firstClose = closeTag.firstMatch(value);
+
+    if (firstOpen == null) {
+      if (firstClose != null) {
+        throw const RecipeGenerationSchemaException('AI 推理包装格式无效。');
+      }
+      return value;
     }
-    final match = RegExp(
-      r'^```(?:json)?\s*([\s\S]*?)\s*```$',
-      caseSensitive: false,
-    ).firstMatch(trimmed);
-    if (match == null) {
-      throw const RecipeGenerationSchemaException('JSON 代码块格式无效。');
+    if (firstOpen.start != 0 || firstClose == null) {
+      throw const RecipeGenerationSchemaException('AI 推理包装未完整闭合。');
     }
-    final payload = match.group(1)?.trim() ?? '';
-    if (payload.isEmpty) {
-      throw const RecipeGenerationSchemaException('JSON 代码块为空。');
+    if (firstClose.start < firstOpen.end) {
+      throw const RecipeGenerationSchemaException('AI 推理包装格式无效。');
     }
-    return payload;
+
+    final reasoning = value.substring(firstOpen.end, firstClose.start);
+    if (reasoning.length > maxReasoningCharacters) {
+      throw const RecipeGenerationSchemaException('AI 推理包装超过大小限制。');
+    }
+    if (openTag.hasMatch(reasoning) || closeTag.hasMatch(reasoning)) {
+      throw const RecipeGenerationSchemaException('AI 推理包装存在嵌套。');
+    }
+
+    final remainder = value.substring(firstClose.end).trim();
+    if (remainder.isEmpty) {
+      throw const RecipeGenerationSchemaException('AI 推理包装后缺少 JSON。');
+    }
+    if (openTag.hasMatch(remainder) || closeTag.hasMatch(remainder)) {
+      throw const RecipeGenerationSchemaException('AI 推理包装重复。');
+    }
+    return remainder;
+  }
+
+  String _extractUniqueJsonObject(String value) {
+    final fences = RegExp(r'```').allMatches(value).toList(growable: false);
+    int? fencedContentStart;
+    int? fencedContentEnd;
+    if (fences.isNotEmpty) {
+      if (fences.length != 2) {
+        throw const RecipeGenerationSchemaException('JSON 代码块数量无效。');
+      }
+      final openingFence = fences.first;
+      final closingFence = fences.last;
+      final headerEnd = value.indexOf('\n', openingFence.end);
+      if (headerEnd < 0 || headerEnd >= closingFence.start) {
+        throw const RecipeGenerationSchemaException('JSON 代码块格式无效。');
+      }
+      final language = value
+          .substring(openingFence.end, headerEnd)
+          .trim()
+          .toLowerCase();
+      if (language.isNotEmpty && language != 'json') {
+        throw const RecipeGenerationSchemaException('JSON 代码块语言无效。');
+      }
+      fencedContentStart = headerEnd + 1;
+      fencedContentEnd = closingFence.start;
+    }
+
+    var depth = 0;
+    var inString = false;
+    var escaping = false;
+    var objectStart = -1;
+    var objectEnd = -1;
+
+    for (var index = 0; index < value.length; index += 1) {
+      final character = value[index];
+      if (depth == 0) {
+        if (character == '{') {
+          if (objectEnd >= 0) {
+            throw const RecipeGenerationSchemaException('AI 返回了多个 JSON 对象。');
+          }
+          objectStart = index;
+          depth = 1;
+        } else if (character == '}') {
+          throw const RecipeGenerationSchemaException('JSON 对象花括号不平衡。');
+        }
+        continue;
+      }
+
+      if (inString) {
+        if (escaping) {
+          escaping = false;
+        } else if (character == '\\') {
+          escaping = true;
+        } else if (character == '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (character == '"') {
+        inString = true;
+      } else if (character == '{') {
+        depth += 1;
+      } else if (character == '}') {
+        depth -= 1;
+        if (depth == 0) {
+          objectEnd = index + 1;
+        }
+      }
+    }
+
+    if (depth != 0 || inString || escaping) {
+      throw const RecipeGenerationSchemaException('JSON 对象未完整闭合。');
+    }
+    if (objectStart < 0 || objectEnd < 0) {
+      throw const RecipeGenerationSchemaException('AI 返回内容中缺少 JSON 对象。');
+    }
+
+    if (fencedContentStart != null && fencedContentEnd != null) {
+      if (objectStart < fencedContentStart || objectEnd > fencedContentEnd) {
+        throw const RecipeGenerationSchemaException('JSON 对象不在代码块内。');
+      }
+      final beforeObject = value
+          .substring(fencedContentStart, objectStart)
+          .trim();
+      final afterObject = value.substring(objectEnd, fencedContentEnd).trim();
+      if (beforeObject.isNotEmpty || afterObject.isNotEmpty) {
+        throw const RecipeGenerationSchemaException('JSON 代码块包含额外内容。');
+      }
+    }
+
+    return value.substring(objectStart, objectEnd);
   }
 
   static Map<String, Object?> _asObject(Object? value, String label) {
@@ -236,7 +367,8 @@ class RecipeGenerationSchemaParser {
       if (entry.key is! String) {
         throw RecipeGenerationSchemaException('$label包含无效字段名。');
       }
-      result[entry.key! as String] = entry.value;
+      // 键统一转为小写，容忍 LLM 输出大小写不一致的字段名。
+      result[(entry.key! as String).toLowerCase()] = entry.value;
     }
     return result;
   }

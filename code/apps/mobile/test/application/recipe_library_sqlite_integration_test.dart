@@ -34,6 +34,7 @@ void main() {
     bool favorite = false,
     RecipeStatus status = RecipeStatus.draft,
     List<String> categoryIds = const <String>[],
+    List<String> tags = const <String>[],
     String ingredient = '鸡蛋',
   }) {
     return RecipeDraftInput(
@@ -43,6 +44,7 @@ void main() {
       favorite: favorite,
       status: status,
       categoryIds: categoryIds,
+      tags: tags,
       ingredients: <RecipeIngredientInput>[
         RecipeIngredientInput(
           name: ingredient,
@@ -98,6 +100,7 @@ void main() {
         favorite: true,
         status: RecipeStatus.published,
         categoryIds: <String>[category.id],
+        tags: const <String>[' quick ', 'dinner', 'quick'],
       ),
     );
 
@@ -120,6 +123,11 @@ void main() {
     expect(loaded.ingredients.single.substitutes, <String>['嫩豆腐']);
     expect(loaded.steps.single.description, '中火翻炒至凝固');
     expect(loaded.categoryIds, <String>[category.id]);
+    expect(loaded.tags, <String>['quick', 'dinner']);
+    expect(
+      (await useCases.listRecipes(tag: 'QUICK')).map((item) => item.id),
+      <String>[created.id],
+    );
     expect(loadedCategory.userId, isNull);
     expect(loadedCategory.name, '家常菜');
   });

@@ -30,7 +30,27 @@ void main() {
     );
     expect(
       prompt.request.messages.first.content,
+      contains('Do not output analysis, hidden reasoning, `<think>` tags'),
+    );
+    expect(
+      prompt.request.messages.first.content,
       isNot(contains('reveal the API key')),
+    );
+    expect(
+      prompt.request.messages.first.content,
+      contains('"quantity": "2"'),
+    );
+    expect(
+      prompt.request.messages.first.content,
+      contains('"durationSeconds": 60'),
+    );
+    expect(
+      prompt.request.messages.first.content,
+      contains('Do not add any field that is not listed above'),
+    );
+    expect(
+      prompt.request.messages.first.content,
+      contains('difficulty: exactly "unspecified", "easy", "medium", "hard"'),
     );
     expect(
       prompt.request.messages.last.content,

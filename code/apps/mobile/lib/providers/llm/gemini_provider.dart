@@ -14,6 +14,16 @@ class GeminiProvider extends LlmProvider {
   final LlmTransport transport;
 
   @override
+  LlmReasoningCapability get reasoningCapability => const LlmReasoningCapability(
+    supportsReasoningControl: true,
+    supportedModes: <LlmReasoningMode>{
+      LlmReasoningMode.fast,
+      LlmReasoningMode.deep,
+    },
+    defaultMode: LlmReasoningMode.fast,
+  );
+
+  @override
   Future<LlmGenerationResult> generate({
     required LlmConnectionConfig config,
     required String apiKey,
@@ -57,9 +67,13 @@ class GeminiProvider extends LlmProvider {
               .toList(growable: false),
         },
       'contents': contentMessages,
-      if (request.temperature != null)
+      if (request.temperature != null || _usesThinking(config, request))
         'generationConfig': <String, Object?>{
-          'temperature': request.temperature,
+          if (request.temperature != null)
+            'temperature': request.temperature,
+          // 推理深度映射：仅 deep 时发送 thinkingConfig（《解决方案.md》）。
+          if (_usesThinking(config, request))
+            'thinkingConfig': <String, Object?>{'includeThoughts': true},
         },
     };
     final headers = <String, String>{'Content-Type': 'application/json'};
@@ -125,5 +139,14 @@ class GeminiProvider extends LlmProvider {
     return Uri.parse(
       '$baseUrl/models/${Uri.encodeComponent(normalizedModel)}:generateContent',
     );
+  }
+
+  /// 是否启用 Gemini 深度思考：request 优先，其次跟随用户配置（fast 关闭）。
+  static bool _usesThinking(
+    LlmConnectionConfig config,
+    LlmGenerationRequest request,
+  ) {
+    final mode = request.reasoningMode ?? config.reasoningMode;
+    return mode == LlmReasoningMode.deep;
   }
 }

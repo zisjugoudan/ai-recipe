@@ -1,3 +1,7 @@
+export 'ocr_model_runtime_config.dart';
+
+import 'ocr_model_runtime_config.dart';
+
 enum OcrRuntimePlatform { android, ios }
 
 enum OcrModelInstallState {
@@ -71,6 +75,7 @@ class OcrModelManifest {
     required String minAppVersion,
     required String license,
     required Iterable<OcrModelFile> files,
+    this.runtimeConfig,
   }) : packageId = _requirePackageId(packageId),
        version = _requireSemanticVersion(version, 'version'),
        engine = _requireEngine(engine),
@@ -81,8 +86,18 @@ class OcrModelManifest {
        minAppVersion = _requireSemanticVersion(minAppVersion, 'minAppVersion'),
        license = _requireText(license, 'license'),
        files = List<OcrModelFile>.unmodifiable(files) {
-    if (schemaVersion != 1) {
-      throw ArgumentError.value(schemaVersion, 'schemaVersion', 'must be 1');
+    if (schemaVersion != 1 && schemaVersion != 2) {
+      throw ArgumentError.value(
+        schemaVersion,
+        'schemaVersion',
+        'must be 1 or 2',
+      );
+    }
+    if (schemaVersion == 1 && runtimeConfig != null) {
+      throw ArgumentError('schemaVersion 1 must not define runtimeConfig');
+    }
+    if (schemaVersion == 2 && runtimeConfig == null) {
+      throw ArgumentError('schemaVersion 2 requires runtimeConfig');
     }
     if (this.platforms.isEmpty) {
       throw ArgumentError('platforms must not be empty');
@@ -104,6 +119,33 @@ class OcrModelManifest {
     if (paths.length != this.files.length) {
       throw ArgumentError('file paths must be unique');
     }
+    final runtime = runtimeConfig;
+    if (runtime != null) {
+      final missingRoles = runtime.requiredFileRoles.difference(roles);
+      if (missingRoles.isNotEmpty) {
+        throw ArgumentError(
+          'runtimeConfig references missing file roles: '
+          '${missingRoles.toList()..sort()}',
+        );
+      }
+      for (final role in <String>{
+        runtime.detector.modelRole,
+        runtime.recognizer.modelRole,
+      }) {
+        final file = this.files.singleWhere((entry) => entry.role == role);
+        if (!file.path.toLowerCase().endsWith('.onnx')) {
+          throw ArgumentError(
+            'OCR model role $role must reference an ONNX file',
+          );
+        }
+      }
+      final dictionary = this.files.singleWhere(
+        (entry) => entry.role == runtime.recognizer.dictionaryRole,
+      );
+      if (!dictionary.path.toLowerCase().endsWith('.txt')) {
+        throw ArgumentError('OCR dictionary role must reference a TXT file');
+      }
+    }
   }
 
   final int schemaVersion;
@@ -115,6 +157,7 @@ class OcrModelManifest {
   final String minAppVersion;
   final String license;
   final List<OcrModelFile> files;
+  final PaddleOcrRuntimeConfig? runtimeConfig;
 
   int get totalSizeBytes =>
       files.fold<int>(0, (total, file) => total + file.sizeBytes);
@@ -130,6 +173,7 @@ class OcrModelManifest {
       'minAppVersion',
       'license',
       'files',
+      'runtimeConfig',
     });
     return OcrModelManifest(
       schemaVersion: _requireInt(json, 'schemaVersion'),
@@ -147,6 +191,13 @@ class OcrModelManifest {
       minAppVersion: _requireString(json, 'minAppVersion'),
       license: _requireString(json, 'license'),
       files: _requireObjectList(json, 'files').map(OcrModelFile.fromJson),
+      runtimeConfig: switch (json['runtimeConfig']) {
+        null => null,
+        final Map value => PaddleOcrRuntimeConfig.fromJson(
+          Map<String, Object?>.from(value),
+        ),
+        _ => throw const FormatException('runtimeConfig must be an object'),
+      },
     );
   }
 
@@ -160,6 +211,7 @@ class OcrModelManifest {
     'minAppVersion': minAppVersion,
     'license': license,
     'files': files.map((file) => file.toJson()).toList(),
+    if (runtimeConfig case final runtime?) 'runtimeConfig': runtime.toJson(),
   };
 }
 
